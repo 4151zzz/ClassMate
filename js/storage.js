@@ -74,11 +74,18 @@ class StorageManager {
     }
   }
 
-  // Save app state (Per-user or default)
+  // Save app state (Per-user or default) & Auto Sync to Cloud
   saveData(data) {
     try {
       const key = this.getCurrentStorageKey();
       localStorage.setItem(key, JSON.stringify(data));
+
+      // Auto Real-Time Sync to Google Drive Cloud
+      const studentId = (data.student && data.student.studentId) || (window.appAuth && window.appAuth.getCurrentUser() && window.appAuth.getCurrentUser().studentId);
+      if (studentId && window.appGDrive && window.appGDrive.isConfigured()) {
+        window.appGDrive.syncPortfolioToCloud(studentId, data);
+      }
+
       return true;
     } catch (e) {
       console.error('Failed to save to LocalStorage', e);
@@ -89,6 +96,9 @@ class StorageManager {
   saveDataForUser(studentId, data) {
     try {
       localStorage.setItem(`classmate_data_${studentId}`, JSON.stringify(data));
+      if (window.appGDrive && window.appGDrive.isConfigured()) {
+        window.appGDrive.syncPortfolioToCloud(studentId, data);
+      }
       return true;
     } catch (e) {
       console.error(e);
