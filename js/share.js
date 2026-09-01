@@ -1,5 +1,8 @@
 /**
- * ClassMate Practicum - Share, QR Code & Real-Time Public View Controller
+ * ClassMate Practicum - Share, QR Code & Public View Controller
+ * 
+ * Embeds full student portfolio into URL Hash via LZ-String compression
+ * so the link works 100% reliably across any device/browser without a server.
  */
 
 class ShareManager {
@@ -9,32 +12,35 @@ class ShareManager {
     this.checkInitialMode();
   }
 
-  // Check URL parameters and hash for view mode and embedded/cloud data
+  // Check URL parameters and hash for view mode and embedded data
   async checkInitialMode() {
     const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('mode') === 'view') {
-      const studentId = urlParams.get('id') || urlParams.get('user');
-      
-      // Step 1: Try to fetch real-time cloud data from Google Drive / Cloud Sync
+    const hasViewMode = urlParams.get('mode') === 'view';
+    const hasPortfolioHash = window.location.hash && window.location.hash.includes('portfolio=');
+    const studentId = urlParams.get('id') || urlParams.get('user');
+
+    if (hasViewMode || hasPortfolioHash || studentId) {
+      this.setPublicMode(true);
+
+      // 1. Try decoding from URL hash (fastest & most reliable)
+      if (hasPortfolioHash) {
+        this.loadFromHash();
+      }
+
+      // 2. Try fetching from Cloud if connected
       if (studentId && window.appGDrive && window.appGDrive.isConfigured()) {
         try {
           const cloudData = await window.appGDrive.fetchPortfolioFromCloud(studentId);
           if (cloudData) {
             this.sharedData = cloudData;
+            window.appStorage.saveDataForUser(studentId, cloudData);
             window.appStorage.getData = () => cloudData;
             if (window.app) window.app.renderAll();
-            console.log('✅ Real-Time Cloud Portfolio Loaded for:', studentId);
-            this.setPublicMode(true);
-            return;
           }
         } catch (e) {
-          console.warn('Could not fetch cloud data, falling back to URL hash', e);
+          console.warn('Cloud fetch fallback', e);
         }
       }
-
-      // Step 2: Fallback to embedded URL Hash data
-      this.loadFromHash();
-      this.setPublicMode(true);
     }
   }
 
@@ -48,8 +54,7 @@ class ShareManager {
       if (!encoded) return;
 
       if (typeof LZString === 'undefined') {
-        console.warn('LZ-String library not loaded yet — will retry');
-        setTimeout(() => this.loadFromHash(), 500);
+        setTimeout(() => this.loadFromHash(), 300);
         return;
       }
 
@@ -59,11 +64,16 @@ class ShareManager {
       const portfolioData = JSON.parse(json);
       this.sharedData = portfolioData;
 
-      // Override storage getData so app renders shared data
-      window.appStorage.getData = () => portfolioData;
-      if (window.app) window.app.renderAll();
+      // Save to local storage for caching
+      const studentId = portfolioData.student?.studentId || 'shared_user';
+      if (window.appStorage) {
+        window.appStorage.saveDataForUser(studentId, portfolioData);
+        window.appStorage.getData = () => portfolioData;
+      }
 
-      console.log('✅ Loaded shared portfolio from URL Hash:', portfolioData.student?.fullName);
+      if (window.app) {
+        window.app.renderAll();
+      }
     } catch (err) {
       console.error('Failed to decode shared portfolio from URL:', err);
     }
@@ -106,89 +116,23 @@ class ShareManager {
     }
   }
 
-  // Build a sanitized copy of data (strip large local base64 images to keep URL clean)
-  sanitizeDataForShare(data) {
-    const clone = JSON.parse(JSON.stringify(data));
-
-    const isBase64Image = (v) => typeof v === 'string' && v.startsWith('data:image');
-    const isBase64Pdf = (v) => typeof v === 'string' && v.startsWith('data:application/pdf');
-
-    if (isBase64Image(clone.student?.avatar)) {
-      clone.student.avatar = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80';
-    }
-    if (isBase64Image(clone.student?.coverPhoto)) {
-      clone.student.coverPhoto = '';
-    }
-    if (isBase64Image(clone.school?.badge)) {
-      clone.school.badge = '';
-    }
-
-    if (clone.mentors) {
-      clone.mentors = clone.mentors.map(m => {
-        if (isBase64Image(m.avatar)) m.avatar = '';
-        return m;
-      });
-    }
-    if (clone.faculty) {
-      clone.faculty = clone.faculty.map(f => {
-        if (isBase64Image(f.avatar)) f.avatar = '';
-        return f;
-      });
-    }
-
-    if (clone.teachingLogs) {
-      clone.teachingLogs = clone.teachingLogs.map(l => {
-        if (isBase64Pdf(l.pdfData)) l.pdfData = null;
-        if (isBase64Image(l.thumbnail)) l.thumbnail = null;
-        return l;
-      });
-    }
-
-    if (clone.gallery) {
-      clone.gallery = clone.gallery.map(g => {
-        if (isBase64Image(g.src)) g.src = '';
-        return g;
-      });
-    }
-    if (clone.studentShowcases) {
-      clone.studentShowcases = clone.studentShowcases.map(s => {
-        if (isBase64Image(s.image)) s.image = '';
-        return s;
-      });
-    }
-
-    return clone;
-  }
-
-  // Generate shareable link
+  // Generate shareable link with embedded portfolio data
   getShareUrl() {
     const rawData = window.appStorage.getData ? window.appStorage.getData() : {};
     const studentId = (rawData.student && rawData.student.studentId) || (window.appAuth && window.appAuth.getCurrentUser() && window.appAuth.getCurrentUser().studentId);
 
-    // If Google Drive Cloud Sync is active, provide clean permanent real-time link!
-    if (window.appGDrive && window.appGDrive.isConfigured() && studentId && studentId !== 'XXXXXXXXXXX') {
-      const url = new URL(window.location.origin + window.location.pathname);
+    const url = new URL(window.location.origin + window.location.pathname);
+    if (studentId && studentId !== 'XXXXXXXXXXX') {
       url.searchParams.set('id', studentId);
-      url.searchParams.set('mode', 'view');
-      return url.href;
     }
+    url.searchParams.set('mode', 'view');
 
-    // Otherwise, embed full data into URL hash for instant serverless sharing
     if (typeof LZString !== 'undefined') {
-      const safeData = this.sanitizeDataForShare(rawData);
-      const json = JSON.stringify(safeData);
+      const json = JSON.stringify(rawData);
       const compressed = LZString.compressToEncodedURIComponent(json);
-
-      const url = new URL(window.location.origin + window.location.pathname);
-      if (studentId && studentId !== 'XXXXXXXXXXX') {
-        url.searchParams.set('id', studentId);
-      }
-      url.searchParams.set('mode', 'view');
       return url.href + '#portfolio=' + compressed;
     }
 
-    const url = new URL(window.location.origin + window.location.pathname);
-    url.searchParams.set('mode', 'view');
     return url.href;
   }
 
@@ -200,6 +144,12 @@ class ShareManager {
     const qrContainer = document.getElementById('qrcode-container');
 
     if (input) input.value = shareUrl;
+
+    // Update browser address bar hash seamlessly so if user copies address bar it has full data
+    if (shareUrl.includes('#portfolio=')) {
+      const hashPart = shareUrl.substring(shareUrl.indexOf('#'));
+      history.replaceState(null, '', window.location.pathname + window.location.search + hashPart);
+    }
 
     if (qrContainer) {
       qrContainer.innerHTML = '';
