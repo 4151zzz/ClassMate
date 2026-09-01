@@ -1,0 +1,1490 @@
+<!DOCTYPE html>
+<html lang="th" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ClassMate Practicum - พอร์ตโฟลิโอและรายงานผลการปฏิบัติการสอนในสถานศึกษา</title>
+  <meta name="description" content="ระบบรายงานผลการฝึกประสบการณ์วิชาชีพครู พอร์ตโฟลิโอการสอน ข้อมูลสถานศึกษา ทำเนียบครูอาจารย์ และแกลเลอรีภาพกิจกรรม" />
+
+  <!-- Google Fonts: Prompt & Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Prompt:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400&display=swap" rel="stylesheet" />
+
+  <!-- FontAwesome 6 Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+
+  <!-- App CSS -->
+  <link rel="stylesheet" href="css/animations.css" />
+  <link rel="stylesheet" href="css/main.css" />
+  <link rel="stylesheet" href="css/responsive.css" />
+
+  <!-- QRCode.js CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+<body>
+
+  <!-- Ambient Light Orbs (Contained) -->
+  <div class="ambient-glow-wrapper">
+    <div class="ambient-glow glow-1"></div>
+    <div class="ambient-glow glow-2"></div>
+    <div class="ambient-glow glow-3"></div>
+  </div>
+
+  <div class="app-container">
+
+    <!-- ==========================================
+         Header / Navigation Bar
+         ========================================== -->
+    <header class="site-header">
+      <div class="nav-glass">
+        <a href="#" class="brand-logo">
+          <div class="logo-icon-wrap">
+            <i class="fas fa-graduation-cap"></i>
+          </div>
+          <div class="brand-info">
+            <span class="brand-title">ClassMate <span class="text-gradient">Practicum</span></span>
+            <span class="brand-subtitle">ระบบรายงานการฝึกประสบการณ์วิชาชีพครู</span>
+          </div>
+        </a>
+
+        <div class="nav-actions">
+          <span id="mode-indicator" class="mode-badge edit-mode">
+            <span class="status-dot" style="background:#f59e0b;box-shadow:0 0 8px #f59e0b"></span> โหมดแก้ไขข้อมูล
+          </span>
+
+          <button id="toggle-mode-btn" class="btn btn-sm btn-outline" title="สลับโหมดการแสดงผล">
+            <i class="fas fa-eye"></i> ดูมุมมองผู้เข้าชม
+          </button>
+
+          <div id="auth-nav-container" style="display:flex; align-items:center;">
+            <button id="login-nav-btn" class="btn btn-sm btn-primary" onclick="window.app.openAuthModal()">
+              <i class="fas fa-user-circle"></i> เข้าสู่ระบบ / ลงทะเบียน
+            </button>
+            <div id="user-logged-pill" style="display:none; align-items:center; gap:0.5rem; background:var(--bg-glass-strong); padding:0.3rem 0.65rem; border-radius:9999px; border:1px solid var(--border-color); cursor:pointer;" onclick="window.app.openAuthModal()" title="คลิกเพื่อจัดการบัญชีผู้ใช้">
+              <i class="fas fa-user-check" style="color:var(--accent-emerald);"></i>
+              <span id="user-logged-name" style="font-size:0.82rem; font-weight:600;"></span>
+            </div>
+          </div>
+
+          <button id="share-btn" class="btn btn-sm btn-outline">
+            <i class="fas fa-share-alt"></i> แชร์โปรไฟล์
+          </button>
+
+          <button class="btn btn-sm btn-outline edit-trigger" onclick="window.app.openGDriveModal()" title="ตั้งค่าเชื่อมต่อ Google Drive อัตโนมัติ" style="color:var(--accent-cyan); border-color:rgba(6,182,212,0.4);">
+            <i class="fab fa-google-drive"></i> เชื่อมต่อ Drive
+          </button>
+
+          <button class="btn btn-sm btn-outline edit-trigger" onclick="window.app.triggerImportJSON()" title="นำเข้าไฟล์สำรอง JSON">
+            <i class="fas fa-file-import"></i> นำเข้า JSON
+          </button>
+          <input type="file" id="import-json-input" accept=".json" style="display:none;" />
+
+          <button class="btn btn-sm btn-outline edit-trigger" onclick="window.app.resetToDefaults()" title="รีเซ็ตเป็นข้อมูลตัวอย่างเริ่มต้น" style="color:var(--accent-amber);">
+            <i class="fas fa-redo-alt"></i> รีเซ็ต
+          </button>
+
+          <button id="theme-toggle-btn" class="btn btn-icon btn-outline" title="เปลี่ยนธีม มืด/สว่าง">
+            <i id="theme-toggle-icon" class="fas fa-sun"></i>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- ==========================================
+         Hero Section - Teacher Profile Showcase
+         ========================================== -->
+    <section class="hero-profile-card animate-fade-in-up">
+      <div class="hero-grid">
+        
+        <!-- Avatar Column -->
+        <div class="avatar-col">
+          <div class="avatar-wrapper" onclick="window.app.openEditProfileModal()" title="คลิกเพื่อแก้ไขรูปโปรไฟล์">
+            <img id="hero-avatar-img" src="" alt="Student Teacher Avatar" class="avatar-img" />
+            <div class="avatar-edit-overlay edit-trigger">
+              <i class="fas fa-camera"></i>
+              <span>เปลี่ยนรูป</span>
+            </div>
+          </div>
+          <div class="student-status-badge">
+            <span class="status-dot"></span>
+            <span id="hero-status-text">กำลังปฏิบัติการสอนในสถานศึกษา</span>
+          </div>
+        </div>
+
+        <!-- Info Column -->
+        <div class="info-col">
+          <div class="hero-name-row">
+            <h1 id="hero-student-name" class="hero-student-name">ชื่อ - สกุล นักศึกษาปฏิบัติการสอน</h1>
+            <span id="hero-student-id" class="hero-student-id">รหัสนักศึกษา: XXXXXXXXXXX</span>
+          </div>
+
+          <div class="hero-faculty-info">
+            <span id="hero-faculty-text"><i class="fas fa-university" style="color:var(--primary-500);"></i> คณะครุศาสตร์ / ศึกษาศาสตร์</span>
+            <span>•</span>
+            <span id="hero-major-text"><i class="fas fa-laptop-code" style="color:var(--accent-purple);"></i> สาขาวิชา...</span>
+          </div>
+
+          <div class="hero-quote-box">
+            <span id="hero-quote-text">“คำคม / ปรัชญาและคติประจำใจในการจัดการเรียนรู้”</span>
+          </div>
+
+          <div id="hero-tags-container" class="hero-tags">
+            <!-- Dynamic tags -->
+          </div>
+
+          <div style="margin-top: 0.5rem; display:flex; gap:0.5rem; flex-wrap:wrap;">
+            <button class="btn btn-sm btn-primary" onclick="window.app.switchTab('logs')">
+              <i class="fas fa-file-alt"></i> แผนการจัดการเรียนรู้
+            </button>
+            <button class="btn btn-sm btn-outline edit-trigger" onclick="window.app.openEditProfileModal()">
+              <i class="fas fa-user-edit"></i> แก้ไขข้อมูลโปรไฟล์ทั้งหมด
+            </button>
+          </div>
+        </div>
+
+        <!-- Quick Stats Column -->
+        <div class="stats-col">
+          <div class="stat-box hover-glow" onclick="window.app.openEditProfileModal()" style="cursor:pointer;" title="คลิกเพื่อแก้ไขจำนวนชั่วโมง">
+            <div class="stat-icon-wrap stat-icon-hours">
+              <i class="fas fa-clock"></i>
+            </div>
+            <div class="stat-content">
+              <span id="stat-completed-hours" class="stat-number">0 / 360 ชม.</span>
+              <span class="stat-label">ชั่วโมงปฏิบัติการสอน <i class="fas fa-pen edit-trigger" style="font-size:0.65rem; margin-left:2px;"></i></span>
+            </div>
+          </div>
+
+          <div class="stat-box hover-glow" onclick="window.app.openEditProfileModal()" style="cursor:pointer;" title="คลิกเพื่อแก้ไขจำนวนแผน">
+            <div class="stat-icon-wrap stat-icon-plans">
+              <i class="fas fa-file-alt"></i>
+            </div>
+            <div class="stat-content">
+              <span id="stat-plans-count" class="stat-number">0 แผน</span>
+              <span class="stat-label">แผนการจัดการเรียนรู้ <i class="fas fa-pen edit-trigger" style="font-size:0.65rem; margin-left:2px;"></i></span>
+            </div>
+          </div>
+
+          <div class="stat-box hover-glow" onclick="window.app.openEditProfileModal()" style="cursor:pointer;" title="คลิกเพื่อแก้ไขระดับชั้น">
+            <div class="stat-icon-wrap stat-icon-school">
+              <i class="fas fa-users-class"></i>
+            </div>
+            <div class="stat-content">
+              <span id="stat-classes-taught" class="stat-number" style="font-size:1.05rem;">ระบุระดับชั้นที่สอน</span>
+              <span class="stat-label">ระดับชั้นที่รับผิดชอบ <i class="fas fa-pen edit-trigger" style="font-size:0.65rem; margin-left:2px;"></i></span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ==========================================
+         Navigation Tabs
+         ========================================== -->
+    <div class="tabs-navigation-wrap">
+      <nav class="tabs-nav">
+        <button class="tab-btn active" data-tab="overview">
+          <i class="fas fa-chart-pie tab-icon"></i> <span>ภาพรวม & ข้อมูลครู</span>
+        </button>
+        <button class="tab-btn" data-tab="school">
+          <i class="fas fa-school tab-icon"></i> <span>ข้อมูลสถานศึกษา</span>
+        </button>
+        <button class="tab-btn" data-tab="mentors">
+          <i class="fas fa-user-tie tab-icon"></i> <span>ครูพี่เลี้ยง & นิเทศก์</span>
+        </button>
+        <button class="tab-btn" data-tab="faculty">
+          <i class="fas fa-id-badge tab-icon"></i> <span>ทำเนียบครูอาจารย์</span>
+        </button>
+        <button class="tab-btn" data-tab="logs">
+          <i class="fas fa-calendar-alt tab-icon"></i> <span>ตารางสอน & แผนการสอน</span>
+        </button>
+        <button class="tab-btn" data-tab="gallery">
+          <i class="fas fa-images tab-icon"></i> <span>แกลเลอรีภาพกิจกรรม</span>
+        </button>
+        <button class="tab-btn" data-tab="showcase">
+          <i class="fas fa-award tab-icon"></i> <span>ผลงานนักเรียน & รางวัล</span>
+        </button>
+      </nav>
+    </div>
+
+    <!-- ==========================================
+         TAB 1: Overview & Philosophy
+         ========================================== -->
+    <div id="tab-overview" class="tab-panel active">
+      <div class="overview-grid" style="display: grid; grid-template-columns: 2fr 1fr; gap: 1.75rem;">
+        
+        <div class="card">
+          <div class="card-header-row">
+            <h3 class="card-title"><i class="fas fa-lightbulb" style="color:var(--accent-amber);"></i> ปรัชญาและวิสัยทัศน์การจัดการเรียนรู้</h3>
+            <button class="btn btn-sm btn-outline edit-trigger" onclick="window.app.openEditProfileModal()">
+              <i class="fas fa-pen"></i> แก้ไขปรัชญา
+            </button>
+          </div>
+          <p id="profile-bio-text" style="color:var(--text-secondary); line-height: 1.8; margin-bottom: 1.5rem;">
+            นักศึกษาฝึกประสบการณ์วิชาชีพครู มุ่งมั่นจัดการเรียนรู้เชิงรุก (Active Learning) บูรณาการเทคโนโลยี AI & Coding เพื่อพัฒนาทักษะแห่งศตวรรษที่ 21 ของผู้เรียนอย่างรอบด้าน
+          </p>
+
+          <div class="card-header-row" style="margin-bottom: 0.75rem;">
+            <h4 style="font-size: 1.05rem; font-weight: 600;">
+              <i class="fas fa-compass" style="color:var(--primary-500);"></i> สมรรถนะสำคัญของผู้เรียนที่มุ่งเน้น (Core Competencies)
+            </h4>
+            <button class="btn btn-sm btn-outline edit-trigger" onclick="window.app.openEditCompetenciesModal()">
+              <i class="fas fa-pen"></i> แก้ไขสมรรถนะ
+            </button>
+          </div>
+          <div id="competencies-container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+            <!-- Rendered dynamically -->
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header-row">
+            <h3 class="card-title"><i class="fas fa-address-card" style="color:var(--accent-cyan);"></i> ช่องทางติดต่อ</h3>
+            <button class="btn btn-sm btn-outline edit-trigger" onclick="window.app.openEditProfileModal()">
+              <i class="fas fa-pen"></i> แก้ไข
+            </button>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 1.1rem;">
+            <div>
+              <span style="font-size: 0.75rem; color:var(--text-muted); display: block;">อีเมลนักศึกษา</span>
+              <span id="profile-email-text" style="font-weight: 600; font-size: 0.95rem; color:var(--text-primary);">thanakrit.w@edu.ac.th</span>
+            </div>
+            <div>
+              <span style="font-size: 0.75rem; color:var(--text-muted); display: block;">เบอร์โทรศัพท์</span>
+              <span id="profile-phone-text" style="font-weight: 600; font-size: 0.95rem; color:var(--text-primary);">089-123-4567</span>
+            </div>
+            <div>
+              <span style="font-size: 0.75rem; color:var(--text-muted); display: block;">เอกสารรายงานสรุปผล</span>
+              <button class="btn btn-sm btn-outline" style="width: 100%; margin-top: 0.4rem;" onclick="window.appShare.printReport()">
+                <i class="fas fa-file-pdf"></i> พิมพ์ / บันทึกรายงานเป็น PDF
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ==========================================
+         TAB 2: School Profile
+         ========================================== -->
+    <div id="tab-school" class="tab-panel">
+      <div class="section-header">
+        <div class="section-title-wrap">
+          <h2 class="section-title"><i class="fas fa-school text-gradient"></i> ข้อมูลสถานศึกษาฝึกประสบการณ์วิชาชีพ</h2>
+          <p class="section-desc">รายละเอียดทั่วไป วิสัยทัศน์ ปรัชญา และแผนที่ตั้งของสถานศึกษา</p>
+        </div>
+        <button class="btn btn-primary edit-trigger" onclick="window.app.openEditSchoolModal()">
+          <i class="fas fa-edit"></i> แก้ไขข้อมูลสถานศึกษาทั้งหมด
+        </button>
+      </div>
+
+      <div class="school-grid">
+        
+        <!-- School Hero -->
+        <div class="school-hero-card">
+          <div class="school-logo-wrap" onclick="window.app.openEditSchoolModal()" style="cursor:pointer;" title="คลิกเพื่อเปลี่ยนตราโรงเรียน">
+            <img id="school-logo-img" src="" alt="School Logo" class="school-logo-img" />
+          </div>
+          <div class="school-header-info">
+            <h3 id="school-name-th" class="school-name-th">ชื่อโรงเรียน / สถานศึกษาที่ปฏิบัติการสอน</h3>
+            <span id="school-name-en" class="school-name-en">School Name (English)</span>
+            <span id="school-motto" class="school-motto">“คำขวัญ / อัตลักษณ์ของสถานศึกษา”</span>
+          </div>
+          <div>
+            <span id="school-affiliation" class="hero-tag" style="background:var(--primary-500); color:#fff;">สังกัด สพฐ. / สกอ.</span>
+          </div>
+        </div>
+
+        <!-- Vision & Info -->
+        <div class="card">
+          <div class="card-header-row">
+            <h3 class="card-title"><i class="fas fa-bullseye" style="color:var(--primary-500);"></i> วิสัยทัศน์สถานศึกษา</h3>
+            <button class="btn btn-sm btn-outline edit-trigger" onclick="window.app.openEditSchoolModal()">
+              <i class="fas fa-pen"></i> แก้ไข
+            </button>
+          </div>
+          <p id="school-vision" style="color:var(--text-secondary); line-height: 1.8; margin-bottom: 1.5rem;">
+            วิสัยทัศน์และพันธกิจของโรงเรียนในการพัฒนาผู้เรียน...
+          </p>
+
+          <h3 class="card-title" style="margin-bottom: 1rem;"><i class="fas fa-info-circle" style="color:var(--accent-purple);"></i> ข้อมูลติดต่อสถานศึกษา</h3>
+          <ul class="school-details-list">
+            <li>
+              <i class="fas fa-user-shield"></i>
+              <div>
+                <strong>ผู้บริหารสถานศึกษา:</strong>
+                <div id="school-director">ชื่อผู้อำนวยการสถานศึกษา</div>
+              </div>
+            </li>
+            <li>
+              <i class="fas fa-map-marker-alt"></i>
+              <div>
+                <strong>ที่ตั้ง:</strong>
+                <div id="school-address">ที่ตั้งสถานศึกษา เลขที่... ถนน... แขวง/ตำบล... เขต/อำเภอ... จังหวัด...</div>
+              </div>
+            </li>
+            <li>
+              <i class="fas fa-phone-alt"></i>
+              <div>
+                <strong>เบอร์โทรศัพท์:</strong>
+                <span id="school-phone">02-XXX-XXXX</span>
+              </div>
+            </li>
+            <li>
+              <i class="fas fa-envelope"></i>
+              <div>
+                <strong>อีเมล:</strong>
+                <span id="school-email">contact@school.ac.th</span>
+              </div>
+            </li>
+            <li>
+              <i class="fas fa-globe"></i>
+              <div>
+                <strong>เว็บไซต์:</strong>
+                <a id="school-website" href="#" target="_blank" style="color:var(--primary-500); text-decoration:none;">https://www.school.ac.th</a>
+              </div>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Map -->
+        <div class="card">
+          <div class="card-header-row">
+            <h3 class="card-title"><i class="fas fa-map-marked-alt" style="color:var(--accent-emerald);"></i> แผนที่ตั้งสถานศึกษา</h3>
+            <button class="btn btn-sm btn-outline edit-trigger" onclick="window.app.openEditSchoolModal()">
+              <i class="fas fa-pen"></i> แก้ไขพิกัดแผนที่
+            </button>
+          </div>
+          <div class="map-container">
+            <iframe id="school-map-iframe" src="" allowfullscreen="" loading="lazy"></iframe>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ==========================================
+         TAB 3: Mentors & Supervisors
+         ========================================== -->
+    <div id="tab-mentors" class="tab-panel">
+      <div class="section-header">
+        <div class="section-title-wrap">
+          <h2 class="section-title"><i class="fas fa-user-tie text-gradient"></i> ครูพี่เลี้ยง & อาจารย์นิเทศก์</h2>
+          <p class="section-desc">ผู้กำกับดูแล ให้คำปรึกษา และประเมินผลการฝึกประสบการณ์วิชาชีพครู</p>
+        </div>
+        <button class="btn btn-primary edit-trigger" onclick="window.app.openAddMentorModal()">
+          <i class="fas fa-user-plus"></i> เพิ่มครูพี่เลี้ยง / อาจารย์นิเทศก์
+        </button>
+      </div>
+
+      <div id="mentors-grid" class="mentors-grid">
+        <!-- Rendered via JS -->
+      </div>
+    </div>
+
+    <!-- ==========================================
+         TAB 4: Faculty Directory (ทำเนียบครูอาจารย์)
+         ========================================== -->
+    <div id="tab-faculty" class="tab-panel">
+      <div class="section-header">
+        <div class="section-title-wrap">
+          <h2 class="section-title"><i class="fas fa-id-badge text-gradient"></i> ทำเนียบครูอาจารย์</h2>
+          <p class="section-desc">ทำเนียบผู้บริหาร คณะครู และบุคลากรทางการศึกษาในสถานศึกษา</p>
+        </div>
+        <button class="btn btn-primary edit-trigger" onclick="window.app.openAddFacultyModal()">
+          <i class="fas fa-plus"></i> เพิ่มครูอาจารย์ในทำเนียบ
+        </button>
+      </div>
+
+      <div class="directory-toolbar">
+        <div class="search-input-wrap">
+          <i class="fas fa-search search-icon"></i>
+          <input type="text" id="faculty-search-input" placeholder="ค้นหาชื่อ, ตำแหน่ง หรือกลุ่มสาระฯ..." />
+        </div>
+
+        <div class="category-filter-pills">
+          <button class="filter-pill faculty-filter-pill active" onclick="window.app.filterFaculty('all', this)">ทั้งหมด</button>
+          <button class="filter-pill faculty-filter-pill" onclick="window.app.filterFaculty('ผู้บริหารสถานศึกษา', this)">ผู้บริหาร</button>
+          <button class="filter-pill faculty-filter-pill" onclick="window.app.filterFaculty('วิทยาศาสตร์และเทคโนโลยี', this)">วิทยาศาสตร์ & เทคโนโลยี</button>
+          <button class="filter-pill faculty-filter-pill" onclick="window.app.filterFaculty('คณิตศาสตร์', this)">คณิตศาสตร์</button>
+          <button class="filter-pill faculty-filter-pill" onclick="window.app.filterFaculty('ภาษาไทย', this)">ภาษาไทย</button>
+          <button class="filter-pill faculty-filter-pill" onclick="window.app.filterFaculty('ภาษาต่างประเทศ', this)">ภาษาต่างประเทศ</button>
+          <button class="filter-pill faculty-filter-pill" onclick="window.app.filterFaculty('กิจกรรมพัฒนาผู้เรียน', this)">แนะแนว & กิจกรรม</button>
+        </div>
+      </div>
+
+      <div id="faculty-grid" class="faculty-grid">
+        <!-- Rendered via JS -->
+      </div>
+    </div>
+
+    <!-- ==========================================
+         TAB 5: Timetable & Lesson Plans
+         ========================================== -->
+    <div id="tab-logs" class="tab-panel">
+      <div class="section-header">
+        <div class="section-title-wrap">
+          <h2 class="section-title"><i class="fas fa-calendar-alt text-gradient"></i> ตารางสอน & แผนการจัดการเรียนรู้</h2>
+          <p class="section-desc">ตารางสอนประจำสัปดาห์ แผนการสอนเชิงรุก Active Learning และการบันทึกการปฏิบัติงาน</p>
+        </div>
+        <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+          <button class="btn btn-outline" onclick="window.app.switchTimetableView('timetable')">
+            <i class="fas fa-calendar-week"></i> ตารางสอน
+          </button>
+          <button class="btn btn-outline" onclick="window.app.switchTimetableView('logs')">
+            <i class="fas fa-list-check"></i> รายการแผนการสอน
+          </button>
+          <button class="btn btn-primary edit-trigger" onclick="window.app.openAddTimetableModal()">
+            <i class="fas fa-plus"></i> เพิ่มคาบสอน
+          </button>
+          <button class="btn btn-outline edit-trigger" onclick="window.app.openAddLogModal()">
+            <i class="fas fa-file-plus"></i> เพิ่มแผนการสอน
+          </button>
+        </div>
+      </div>
+
+      <!-- View Mode 1: Weekly Timetable Board -->
+      <div id="timetable-view-container">
+        <div id="timetable-days-grid" class="timetable-days-grid">
+          <!-- Rendered via JS -->
+        </div>
+      </div>
+
+      <!-- View Mode 2: Timeline Lesson Plans List -->
+      <div id="logs-view-container" style="display:none; margin-top:1.5rem;">
+        <div class="section-title-wrap" style="margin-bottom:1rem;">
+          <h3 style="font-size:1.15rem; font-weight:700;"><i class="fas fa-tasks text-gradient"></i> ประวัติบันทึกและแผนการจัดการเรียนรู้</h3>
+        </div>
+        <div id="teaching-timeline" class="teaching-timeline">
+          <!-- Rendered via JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- ==========================================
+         TAB 6: Photo Gallery (อัปโหลดรูปภาพ)
+         ========================================== -->
+    <div id="tab-gallery" class="tab-panel">
+      <div class="section-header">
+        <div class="section-title-wrap">
+          <h2 class="section-title"><i class="fas fa-images text-gradient"></i> แกลเลอรีภาพกิจกรรมการฝึกสอน</h2>
+          <p class="section-desc">รวมภาพบรรยากาศการสอนในห้องเรียน การนิเทศ และกิจกรรมพัฒนาผู้เรียน</p>
+        </div>
+        <button class="btn btn-primary edit-trigger" onclick="window.app.openAddGalleryModal()">
+          <i class="fas fa-cloud-upload-alt"></i> อัปโหลดรูปภาพกิจกรรม
+        </button>
+      </div>
+
+      <div class="directory-toolbar">
+        <div class="category-filter-pills">
+          <button class="filter-pill gallery-filter-pill active" onclick="window.appGallery.filter('all', this)">ทั้งหมด</button>
+          <button class="filter-pill gallery-filter-pill" onclick="window.appGallery.filter('การสอนในห้อง', this)">การสอนในห้อง</button>
+          <button class="filter-pill gallery-filter-pill" onclick="window.appGallery.filter('นิเทศการสอน', this)">นิเทศการสอน</button>
+          <button class="filter-pill gallery-filter-pill" onclick="window.appGallery.filter('กิจกรรมโรงเรียน', this)">กิจกรรมโรงเรียน</button>
+          <button class="filter-pill gallery-filter-pill" onclick="window.appGallery.filter('ผลงานนักเรียน', this)">ผลงานนักเรียน</button>
+          <button class="filter-pill gallery-filter-pill" onclick="window.appGallery.filter('สื่อและนวัตกรรม', this)">สื่อและนวัตกรรม</button>
+          <button class="filter-pill gallery-filter-pill" onclick="window.appGallery.filter('บรรยากาศโรงเรียน', this)">บรรยากาศโรงเรียน</button>
+        </div>
+      </div>
+
+      <div id="gallery-grid" class="gallery-grid">
+        <!-- Rendered via JS -->
+      </div>
+    </div>
+
+    <!-- ==========================================
+         TAB 7: Student Showcase & Awards
+         ========================================== -->
+    <div id="tab-showcase" class="tab-panel">
+      <div class="section-header">
+        <div class="section-title-wrap">
+          <h2 class="section-title"><i class="fas fa-award text-gradient"></i> ผลงานนักเรียน & ชิ้นงานเด่น</h2>
+          <p class="section-desc">ผลผลิตจากการจัดการเรียนรู้เชิงรุก โครงงานและนวัตกรรมของนักเรียน</p>
+        </div>
+        <button class="btn btn-primary edit-trigger" onclick="window.app.openAddShowcaseModal()">
+          <i class="fas fa-plus-circle"></i> เพิ่มผลงานนักเรียนใหม่
+        </button>
+      </div>
+
+      <div id="student-showcases-grid" class="showcase-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.75rem;">
+        <!-- Rendered via JS -->
+      </div>
+    </div>
+
+  </div> <!-- /app-container -->
+
+  <!-- ==========================================
+       MODALS
+       ========================================== -->
+
+  <!-- Modal 1: Edit Student Profile -->
+  <div id="edit-profile-modal" class="modal-backdrop">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title"><i class="fas fa-user-edit"></i> แก้ไขข้อมูลโปรไฟล์นักศึกษา</h3>
+        <button class="modal-close-btn" onclick="window.app.closeModal('edit-profile-modal')">&times;</button>
+      </div>
+      <form onsubmit="window.app.saveStudentProfile(event)">
+        <div class="modal-body">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">ชื่อ - นามสกุล</label>
+              <input type="text" id="edit-student-name" class="form-input" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label">รหัสนักศึกษา</label>
+              <input type="text" id="edit-student-id" class="form-input" required />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">สาขาวิชา</label>
+              <input type="text" id="edit-student-major" class="form-input" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label">คณะ</label>
+              <input type="text" id="edit-student-faculty" class="form-input" required />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">มหาวิทยาลัย / สถาบัน</label>
+              <input type="text" id="edit-student-uni" class="form-input" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label">สถานะการฝึกสอน</label>
+              <input type="text" id="edit-student-status" class="form-input" placeholder="เช่น กำลังปฏิบัติการสอนในสถานศึกษา" required />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">คติประจำใจ / คำคมครู</label>
+            <textarea id="edit-student-quote" class="form-textarea" rows="2"></textarea>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">ปรัชญาและวิสัยทัศน์การสอน (Bio)</label>
+            <textarea id="edit-student-bio" class="form-textarea" rows="3"></textarea>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">แท็กและจุดเด่น (คั่นด้วยเครื่องหมายจุลภาค ,)</label>
+            <input type="text" id="edit-student-tags" class="form-input" placeholder="เช่น ครูฝึกสอน, Active Learning, AI & EdTech, ปีการศึกษา 2568" />
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">ชั่วโมงที่ปฏิบัติแล้ว (ชม.)</label>
+              <input type="number" id="edit-student-hours-done" class="form-input" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">ชั่วโมงทั้งหมดตามเกณฑ์ (ชม.)</label>
+              <input type="number" id="edit-student-hours-total" class="form-input" />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">จำนวนแผนการสอน (แผน)</label>
+              <input type="number" id="edit-student-plans" class="form-input" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">ระดับชั้นที่สอน</label>
+              <input type="text" id="edit-student-classes" class="form-input" />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">อีเมล</label>
+              <input type="email" id="edit-student-email" class="form-input" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">เบอร์โทร</label>
+              <input type="text" id="edit-student-phone" class="form-input" />
+            </div>
+          </div>
+
+          <!-- Upload Dropzone -->
+          <div class="form-group">
+            <label class="form-label">อัปโหลดรูปโปรไฟล์ใหม่</label>
+            <div class="upload-dropzone">
+              <input type="file" accept="image/*" style="display:none;" />
+              <i class="fas fa-cloud-upload-alt upload-icon"></i>
+              <div class="upload-text-main">ลากไฟล์รูปภาพมาวาง หรือคลิกเพื่อเลือกไฟล์</div>
+              <div class="upload-text-sub">รองรับ JPG, PNG, WebP</div>
+            </div>
+            <div class="upload-preview-container"></div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="window.app.closeModal('edit-profile-modal')">ยกเลิก</button>
+          <button type="submit" class="btn btn-primary">บันทึกการเปลี่ยนแปลง</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 1.5: Edit Competencies -->
+  <div id="edit-competencies-modal" class="modal-backdrop">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title"><i class="fas fa-compass"></i> แก้ไขสมรรถนะสำคัญของผู้เรียน</h3>
+        <button class="modal-close-btn" onclick="window.app.closeModal('edit-competencies-modal')">&times;</button>
+      </div>
+      <form onsubmit="window.app.saveCompetencies(event)">
+        <div class="modal-body">
+          <div style="background:var(--bg-glass-strong); padding:1rem; border-radius:var(--radius-md); border:1px solid var(--border-color); display:flex; flex-direction:column; gap:0.5rem;">
+            <label class="form-label">สมรรถนะที่ 1</label>
+            <input type="text" id="edit-comp-1-title" class="form-input" placeholder="หัวข้อสมรรถนะ เช่น การคิดขั้นสูง" required />
+            <input type="text" id="edit-comp-1-desc" class="form-input" placeholder="คำอธิบายสั้นๆ" required />
+          </div>
+
+          <div style="background:var(--bg-glass-strong); padding:1rem; border-radius:var(--radius-md); border:1px solid var(--border-color); display:flex; flex-direction:column; gap:0.5rem;">
+            <label class="form-label">สมรรถนะที่ 2</label>
+            <input type="text" id="edit-comp-2-title" class="form-input" placeholder="หัวข้อสมรรถนะ เช่น ทักษะดิจิทัล" required />
+            <input type="text" id="edit-comp-2-desc" class="form-input" placeholder="คำอธิบายสั้นๆ" required />
+          </div>
+
+          <div style="background:var(--bg-glass-strong); padding:1rem; border-radius:var(--radius-md); border:1px solid var(--border-color); display:flex; flex-direction:column; gap:0.5rem;">
+            <label class="form-label">สมรรถนะที่ 3</label>
+            <input type="text" id="edit-comp-3-title" class="form-input" placeholder="หัวข้อสมรรถนะ เช่น การทำงานร่วมกัน" required />
+            <input type="text" id="edit-comp-3-desc" class="form-input" placeholder="คำอธิบายสั้นๆ" required />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="window.app.closeModal('edit-competencies-modal')">ยกเลิก</button>
+          <button type="submit" class="btn btn-primary">บันทึกสมรรถนะ</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 2: Edit School Profile -->
+  <div id="edit-school-modal" class="modal-backdrop">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title"><i class="fas fa-school"></i> แก้ไขข้อมูลสถานศึกษา</h3>
+        <button class="modal-close-btn" onclick="window.app.closeModal('edit-school-modal')">&times;</button>
+      </div>
+      <form onsubmit="window.app.saveSchoolProfile(event)">
+        <div class="modal-body">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">ชื่อโรงเรียน (ภาษาไทย)</label>
+              <input type="text" id="edit-school-name-th" class="form-input" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label">ชื่อโรงเรียน (ภาษาอังกฤษ)</label>
+              <input type="text" id="edit-school-name-en" class="form-input" />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">คำขวัญ / ปรัชญาโรงเรียน</label>
+              <input type="text" id="edit-school-motto" class="form-input" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">สังกัดหน่วยงาน</label>
+              <input type="text" id="edit-school-affiliation" class="form-input" placeholder="เช่น สังกัด สพฐ. / สกอ." />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">วิสัยทัศน์โรงเรียน</label>
+            <textarea id="edit-school-vision" class="form-textarea" rows="3"></textarea>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">ที่อยู่โรงเรียน</label>
+            <textarea id="edit-school-address" class="form-textarea" rows="2"></textarea>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">ชื่อผู้อำนวยการโรงเรียน</label>
+            <input type="text" id="edit-school-director" class="form-input" />
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">เบอร์โทรศัพท์</label>
+              <input type="text" id="edit-school-phone" class="form-input" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">อีเมลโรงเรียน</label>
+              <input type="email" id="edit-school-email" class="form-input" />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">เว็บไซต์</label>
+            <input type="url" id="edit-school-website" class="form-input" />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Google Maps Embed URL (ลิงก์แทรกแผนที่ iframe)</label>
+            <input type="text" id="edit-school-map" class="form-input" />
+          </div>
+
+          <!-- Upload Dropzone -->
+          <div class="form-group">
+            <label class="form-label">อัปโหลดตราสัญลักษณ์โรงเรียน (Logo)</label>
+            <div class="upload-dropzone">
+              <input type="file" accept="image/*" style="display:none;" />
+              <i class="fas fa-shield-alt upload-icon"></i>
+              <div class="upload-text-main">ลากไฟล์รูปภาพมาวาง หรือคลิกเพื่อเลือกไฟล์</div>
+              <div class="upload-text-sub">รองรับ JPG, PNG, WebP</div>
+            </div>
+            <div class="upload-preview-container"></div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="window.app.closeModal('edit-school-modal')">ยกเลิก</button>
+          <button type="submit" class="btn btn-primary">บันทึกข้อมูลสถานศึกษา</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 3: Add / Edit Mentor -->
+  <div id="edit-mentor-modal" class="modal-backdrop">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="mentor-modal-title" class="modal-title"><i class="fas fa-user-tie"></i> แก้ไขข้อมูลครูพี่เลี้ยง / อาจารย์นิเทศก์</h3>
+        <button class="modal-close-btn" onclick="window.app.closeModal('edit-mentor-modal')">&times;</button>
+      </div>
+      <form onsubmit="window.app.saveMentor(event)">
+        <input type="hidden" id="edit-mentor-id" />
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">ประเภทผู้ประเมิน</label>
+            <select id="edit-mentor-role-type" class="form-select" required>
+              <option value="mentor">ครูพี่เลี้ยง (Mentor Teacher)</option>
+              <option value="supervisor">อาจารย์นิเทศก์ (University Supervisor)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">ชื่อ - นามสกุล (พร้อมคำนำหน้า)</label>
+            <input type="text" id="edit-mentor-name" class="form-input" required />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">บทบาทหน้าที่ (ข้อความกำกับหัวการ์ด)</label>
+            <input type="text" id="edit-mentor-role-title" class="form-input" required />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">ตำแหน่งทางวิชาการ / วิทยฐานะ</label>
+            <input type="text" id="edit-mentor-position" class="form-input" required />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">กลุ่มสาระฯ / ภาควิชา / สังกัด</label>
+            <input type="text" id="edit-mentor-dept" class="form-input" required />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">ข้อคิดเห็น / คำประเมินเบื้องต้น</label>
+            <textarea id="edit-mentor-comment" class="form-textarea" rows="3"></textarea>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">เบอร์โทร</label>
+              <input type="text" id="edit-mentor-phone" class="form-input" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">อีเมล</label>
+              <input type="email" id="edit-mentor-email" class="form-input" />
+            </div>
+          </div>
+
+          <!-- Upload Dropzone -->
+          <div class="form-group">
+            <label class="form-label">อัปโหลดรูปภาพโปรไฟล์</label>
+            <div class="upload-dropzone">
+              <input type="file" accept="image/*" style="display:none;" />
+              <i class="fas fa-camera upload-icon"></i>
+              <div class="upload-text-main">ลากไฟล์รูปภาพมาวาง หรือคลิกเพื่อเลือกไฟล์</div>
+            </div>
+            <div class="upload-preview-container"></div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="window.app.closeModal('edit-mentor-modal')">ยกเลิก</button>
+          <button type="submit" class="btn btn-primary">บันทึกข้อมูล</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 4: Add / Edit Faculty Teacher -->
+  <div id="edit-faculty-modal" class="modal-backdrop">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="faculty-modal-title" class="modal-title"><i class="fas fa-user-plus"></i> เพิ่มครูอาจารย์ในทำเนียบ</h3>
+        <button class="modal-close-btn" onclick="window.app.closeModal('edit-faculty-modal')">&times;</button>
+      </div>
+      <form onsubmit="window.app.saveFaculty(event)">
+        <input type="hidden" id="edit-fac-id" />
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">ชื่อ - นามสกุล (พร้อมคำนำหน้า)</label>
+            <input type="text" id="edit-fac-name" class="form-input" required />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">ตำแหน่ง / หน้าที่รับผิดชอบ</label>
+            <input type="text" id="edit-fac-position" class="form-input" required />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">กลุ่มสาระการเรียนรู้ / ฝ่าย</label>
+            <select id="edit-fac-dept" class="form-select" required>
+              <option value="ผู้บริหารสถานศึกษา">ผู้บริหารสถานศึกษา</option>
+              <option value="วิทยาศาสตร์และเทคโนโลยี">วิทยาศาสตร์และเทคโนโลยี</option>
+              <option value="คณิตศาสตร์">คณิตศาสตร์</option>
+              <option value="ภาษาไทย">ภาษาไทย</option>
+              <option value="ภาษาต่างประเทศ">ภาษาต่างประเทศ</option>
+              <option value="สังคมศึกษา ศาสนา และวัฒนธรรม">สังคมศึกษา ศาสนา และวัฒนธรรม</option>
+              <option value="สุขศึกษาและพลศึกษา">สุขศึกษาและพลศึกษา</option>
+              <option value="ศิลปะ">ศิลปะ</option>
+              <option value="การงานอาชีพ">การงานอาชีพ</option>
+              <option value="กิจกรรมพัฒนาผู้เรียน">กิจกรรมพัฒนาผู้เรียน</option>
+            </select>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">เบอร์โทรศัพท์</label>
+              <input type="text" id="edit-fac-phone" class="form-input" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">อีเมล</label>
+              <input type="email" id="edit-fac-email" class="form-input" />
+            </div>
+          </div>
+
+          <!-- Upload Dropzone -->
+          <div class="form-group">
+            <label class="form-label">อัปโหลดรูปถ่ายครูอาจารย์</label>
+            <div class="upload-dropzone">
+              <input type="file" accept="image/*" style="display:none;" />
+              <i class="fas fa-user-circle upload-icon"></i>
+              <div class="upload-text-main">ลากไฟล์รูปภาพมาวาง หรือคลิกเพื่อเลือกไฟล์</div>
+            </div>
+            <div class="upload-preview-container"></div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="window.app.closeModal('edit-faculty-modal')">ยกเลิก</button>
+          <button type="submit" class="btn btn-primary">บันทึกข้อมูลทำเนียบ</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 5: Add / Edit Gallery Photo -->
+  <div id="edit-gallery-modal" class="modal-backdrop">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="gallery-modal-title" class="modal-title"><i class="fas fa-cloud-upload-alt"></i> อัปโหลดรูปภาพกิจกรรมใหม่</h3>
+        <button class="modal-close-btn" onclick="window.app.closeModal('edit-gallery-modal')">&times;</button>
+      </div>
+      <form onsubmit="window.app.saveGalleryItem(event)">
+        <input type="hidden" id="edit-gal-id" />
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">หัวข้อ / ชื่อกิจกรรม</label>
+            <input type="text" id="edit-gal-title" class="form-input" required />
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">หมวดหมู่ภาพ</label>
+              <select id="edit-gal-category" class="form-select" required>
+                <option value="การสอนในห้อง">การสอนในห้อง</option>
+                <option value="นิเทศการสอน">นิเทศการสอน</option>
+                <option value="กิจกรรมโรงเรียน">กิจกรรมโรงเรียน</option>
+                <option value="ผลงานนักเรียน">ผลงานนักเรียน</option>
+                <option value="สื่อและนวัตกรรม">สื่อและนวัตกรรม</option>
+                <option value="บรรยากาศโรงเรียน">บรรยากาศโรงเรียน</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">วันที่จัดกิจกรรม</label>
+              <input type="text" id="edit-gal-date" class="form-input" />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">คำอธิบายภาพ / ผลลัพธ์การเรียนรู้</label>
+            <textarea id="edit-gal-desc" class="form-textarea" rows="3"></textarea>
+          </div>
+
+          <!-- Upload Dropzone -->
+          <div class="form-group">
+            <label class="form-label">เลือกรูปภาพ</label>
+            <div class="upload-dropzone">
+              <input type="file" accept="image/*" style="display:none;" />
+              <i class="fas fa-images upload-icon"></i>
+              <div class="upload-text-main">ลากไฟล์ภาพมาวาง หรือคลิกเพื่ออัปโหลด</div>
+              <div class="upload-text-sub">ความละเอียดสูง ระบบจะบีบอัดอัตโนมัติ</div>
+            </div>
+            <div class="upload-preview-container"></div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="window.app.closeModal('edit-gallery-modal')">ยกเลิก</button>
+          <button type="submit" class="btn btn-primary">บันทึกรูปภาพ</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 6: Add / Edit Teaching Log -->
+  <div id="edit-log-modal" class="modal-backdrop">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title"><i class="fas fa-file-signature"></i> บันทึกแผนการจัดการเรียนรู้</h3>
+        <button class="modal-close-btn" onclick="window.app.closeModal('edit-log-modal')">&times;</button>
+      </div>
+      <form onsubmit="window.app.saveLog(event)">
+        <input type="hidden" id="edit-log-id" />
+        <div class="modal-body">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">สัปดาห์ที่</label>
+              <input type="text" id="edit-log-week" class="form-input" placeholder="เช่น สัปดาห์ที่ 1" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label">วันที่สอน</label>
+              <input type="text" id="edit-log-date" class="form-input" required />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">รายวิชา</label>
+              <input type="text" id="edit-log-subject" class="form-input" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label">ระดับชั้น / ห้อง</label>
+              <input type="text" id="edit-log-grade" class="form-input" required />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">หัวข้อเรื่อง / หน่วยการเรียนรู้</label>
+            <input type="text" id="edit-log-title" class="form-input" required />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">กิจกรรมการเรียนรู้ / บันทึกหลังสอน</label>
+            <textarea id="edit-log-desc" class="form-textarea" rows="3" required></textarea>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">จุดประสงค์การเรียนรู้ (Learning Objectives)</label>
+            <textarea id="edit-log-objectives" class="form-textarea" rows="2" placeholder="1. ด้านความรู้ (K)&#10;2. ด้านทักษะ (P)&#10;3. ด้านเจตคติ (A)"></textarea>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">ขั้นตอนการจัดกิจกรรม Active Learning</label>
+            <textarea id="edit-log-steps" class="form-textarea" rows="2" placeholder="• ขั้นนำ (10 นาที)&#10;• ขั้นสอน (35 นาที)&#10;• ขั้นสรุป (15 นาที)"></textarea>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">อัปโหลดเอกสารแผนการสอน (ไฟล์ PDF)</label>
+            <div class="upload-dropzone" id="pdf-upload-dropzone">
+              <input type="file" id="edit-log-pdffile" accept=".pdf,application/pdf" style="display:none;" />
+              <i class="fas fa-file-pdf upload-icon" style="color:#ef4444;"></i>
+              <div class="upload-text-main">ลากไฟล์ PDF มาวาง หรือคลิกเพื่ออัปโหลด</div>
+              <div class="upload-text-sub">สำหรับแสดงพรีวิวแบบ Interactive และให้ผู้อื่นดาวน์โหลด</div>
+            </div>
+            <div id="pdf-preview-status" style="margin-top:0.4rem; font-size:0.85rem;"></div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">หรือ ใส่ลิงก์ภายนอก (Google Drive / Canva / OneDrive URL)</label>
+            <input type="url" id="edit-log-planlink" class="form-input" placeholder="https://drive.google.com/..." />
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">จำนวนชั่วโมง</label>
+              <input type="number" id="edit-log-hours" class="form-input" value="4" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label">สถานะการประเมิน</label>
+              <select id="edit-log-status" class="form-select">
+                <option value="ผ่านการประเมิน">ผ่านการประเมิน</option>
+                <option value="ผ่านการประเมิน (ดีเยี่ยม)">ผ่านการประเมิน (ดีเยี่ยม)</option>
+                <option value="รอการประเมิน">รอการประเมิน</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="window.app.closeModal('edit-log-modal')">ยกเลิก</button>
+          <button type="submit" class="btn btn-primary">บันทึกข้อมูลแผนการสอน</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 6.5: View Lesson Plan Full Details & Interactive PDF Preview -->
+  <div id="view-plan-modal" class="modal-backdrop">
+    <div class="modal-card" style="max-width: 820px; width: 95vw;">
+      <div class="modal-header">
+        <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
+          <span id="view-plan-week-badge" class="log-week-badge">สัปดาห์ที่ 1</span>
+          <h3 class="modal-title"><i class="fas fa-file-invoice" style="color:var(--primary-500);"></i> รายละเอียดแผนการจัดการเรียนรู้</h3>
+        </div>
+        <button class="modal-close-btn" onclick="window.app.closeModal('view-plan-modal')">&times;</button>
+      </div>
+
+      <!-- Plan Sub-Tabs (Summary vs Full PDF Preview) -->
+      <div style="display:flex; gap:0.5rem; padding: 0.75rem 1.5rem 0; border-bottom: 1px solid var(--border-color); background:var(--bg-glass);">
+        <button id="plan-tab-btn-summary" class="btn btn-sm btn-primary" onclick="window.app.switchPlanViewTab('summary')">
+          <i class="fas fa-align-left"></i> สรุปรายละเอียดแผน
+        </button>
+        <button id="plan-tab-btn-pdf" class="btn btn-sm btn-outline" onclick="window.app.switchPlanViewTab('pdf')">
+          <i class="fas fa-file-pdf" style="color:#ef4444;"></i> พรีวิวเอกสาร PDF
+        </button>
+      </div>
+
+      <div class="modal-body">
+        
+        <!-- Tab View 1: Summary Details -->
+        <div id="plan-view-summary-section">
+          <div>
+            <h2 id="view-plan-title" style="font-size:1.35rem; font-weight:700; margin-bottom:0.4rem; color:var(--text-primary);"></h2>
+            <div id="view-plan-meta" style="font-size:0.86rem; color:var(--text-secondary); display:flex; flex-wrap:wrap; gap:0.5rem; margin-bottom:1rem; padding-bottom:0.75rem; border-bottom:1px solid var(--border-color);">
+            </div>
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:1rem;">
+            <div>
+              <h4 style="font-size:0.95rem; font-weight:600; color:var(--primary-500); margin-bottom:0.35rem;">
+                <i class="fas fa-bullseye"></i> จุดประสงค์การเรียนรู้ (Objectives)
+              </h4>
+              <div id="view-plan-objectives" style="background:var(--bg-glass-strong); padding:0.85rem 1rem; border-radius:var(--radius-md); border:1px solid var(--border-color); font-size:0.88rem; color:var(--text-secondary); white-space:pre-line; line-height:1.6;">
+              </div>
+            </div>
+
+            <div>
+              <h4 style="font-size:0.95rem; font-weight:600; color:var(--accent-purple); margin-bottom:0.35rem;">
+                <i class="fas fa-layer-group"></i> กิจกรรมการจัดการเรียนรู้ (Active Learning)
+              </h4>
+              <div id="view-plan-steps" style="background:var(--bg-glass-strong); padding:0.85rem 1rem; border-radius:var(--radius-md); border:1px solid var(--border-color); font-size:0.88rem; color:var(--text-secondary); white-space:pre-line; line-height:1.6;">
+              </div>
+            </div>
+
+            <div>
+              <h4 style="font-size:0.95rem; font-weight:600; color:var(--accent-emerald); margin-bottom:0.35rem;">
+                <i class="fas fa-clipboard-check"></i> บันทึกผลหลังการจัดการเรียนรู้
+              </h4>
+              <p id="view-plan-desc" style="background:var(--bg-glass-strong); padding:0.85rem 1rem; border-radius:var(--radius-md); border:1px solid var(--border-color); font-size:0.88rem; color:var(--text-secondary); line-height:1.6;">
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab View 2: Interactive PDF Preview -->
+        <div id="plan-view-pdf-section" style="display:none; flex-direction:column; gap:0.75rem;">
+          <div id="plan-pdf-container" style="width:100%; height:520px; border-radius:var(--radius-md); overflow:hidden; border:1px solid var(--border-color); background:var(--bg-tertiary); display:flex; align-items:center; justify-content:center;">
+            <!-- Rendered iframe or fallback -->
+          </div>
+        </div>
+
+      </div>
+
+      <div class="modal-footer">
+        <button id="view-plan-edit-btn" class="btn btn-outline edit-trigger">
+          <i class="fas fa-edit"></i> แก้ไขแผนนี้
+        </button>
+        <a id="view-plan-download-btn" href="#" download="Lesson_Plan.pdf" class="btn btn-outline" style="color:var(--accent-emerald); display:none;">
+          <i class="fas fa-download"></i> ดาวน์โหลด PDF
+        </a>
+        <a id="view-plan-ext-link" href="#" target="_blank" class="btn btn-outline" style="color:var(--primary-500); border-color:var(--primary-500); display:none;">
+          <i class="fas fa-external-link-alt"></i> เปิดใน Google Drive
+        </a>
+        <button type="button" class="btn btn-primary" onclick="window.print()">
+          <i class="fas fa-print"></i> พิมพ์แผน
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 6.6: View All Plans / Lesson Plans Library -->
+  <div id="view-all-plans-modal" class="modal-backdrop">
+    <div class="modal-card" style="max-width: 720px;">
+      <div class="modal-header">
+        <h3 class="modal-title"><i class="fas fa-folder-open text-gradient"></i> คลังแผนการจัดการเรียนรู้ทั้งหมด</h3>
+        <button class="modal-close-btn" onclick="window.app.closeModal('view-all-plans-modal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 0.88rem; color: var(--text-secondary);">
+          รวมแผนการจัดการเรียนรู้เชิงรุก (Active Learning) ทุกสัปดาห์ พร้อมสื่อประกอบการสอนและใบงาน
+        </p>
+
+        <div id="all-plans-list" style="display: flex; flex-direction: column; gap: 0.75rem;">
+          <!-- Dynamically populated via JS -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="window.app.closeModal('view-all-plans-modal')">ปิด</button>
+        <button class="btn btn-primary edit-trigger" onclick="window.app.closeModal('view-all-plans-modal'); window.app.openAddLogModal();">
+          <i class="fas fa-plus"></i> เพิ่มแผนใหม่
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 6.7: Add / Edit Timetable Period Slot -->
+  <div id="edit-timetable-modal" class="modal-backdrop">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="timetable-modal-title" class="modal-title"><i class="fas fa-calendar-plus"></i> เพิ่ม / แก้ไขคาบสอนในตาราง</h3>
+        <button class="modal-close-btn" onclick="window.app.closeModal('edit-timetable-modal')">&times;</button>
+      </div>
+      <form onsubmit="window.app.saveTimetableSlot(event)">
+        <input type="hidden" id="edit-tt-id" />
+        <div class="modal-body">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">วันในสัปดาห์</label>
+              <select id="edit-tt-day" class="form-select" required>
+                <option value="จันทร์">วันจันทร์</option>
+                <option value="อังคาร">วันอังคาร</option>
+                <option value="พุธ">วันพุธ</option>
+                <option value="พฤหัสบดี">วันพฤหัสบดี</option>
+                <option value="ศุกร์">วันศุกร์</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">คาบที่</label>
+              <input type="number" id="edit-tt-period" class="form-input" min="1" max="10" value="1" required />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">ช่วงเวลาสอน</label>
+              <input type="text" id="edit-tt-time" class="form-input" placeholder="เช่น 08:30 - 09:20" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label">รหัสวิชา</label>
+              <input type="text" id="edit-tt-code" class="form-input" placeholder="เช่น ว21103" required />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">ชื่อรายวิชา / กิจกรรม</label>
+            <input type="text" id="edit-tt-name" class="form-input" placeholder="เช่น วิทยาการคำนวณ" required />
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">ระดับชั้น / ห้องเรียน</label>
+              <input type="text" id="edit-tt-grade" class="form-input" placeholder="เช่น ม.1/2" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label">สถานที่สอน / ห้องเรียน</label>
+              <input type="text" id="edit-tt-room" class="form-input" placeholder="เช่น ห้องคอมพิวเตอร์ 1" required />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">ผูกกับแผนการจัดการเรียนรู้</label>
+            <select id="edit-tt-planid" class="form-select">
+              <option value="">-- ไม่ระบุแผน / ลิงก์ทั่วไป --</option>
+              <option value="log-1">แผนที่ 1: การคิดเชิงคำนวณและการแก้ปัญหา</option>
+              <option value="log-2">แผนที่ 2: กระบวนการออกแบบเชิงวิศวกรรม</option>
+              <option value="log-3">แผนที่ 3: การรู้เท่าทันปัญญาประดิษฐ์ (AI Literacy)</option>
+              <option value="log-4">แผนที่ 4: การพัฒนาโปรแกรมด้วย Scratch Game</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="window.app.closeModal('edit-timetable-modal')">ยกเลิก</button>
+          <button type="submit" class="btn btn-primary">บันทึกคาบสอน</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 7: Add / Edit Student Showcase -->
+  <div id="edit-showcase-modal" class="modal-backdrop">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="showcase-modal-title" class="modal-title"><i class="fas fa-plus-circle"></i> เพิ่มผลงานนักเรียน & ชิ้นงานเด่น</h3>
+        <button class="modal-close-btn" onclick="window.app.closeModal('edit-showcase-modal')">&times;</button>
+      </div>
+      <form onsubmit="window.app.saveShowcase(event)">
+        <input type="hidden" id="edit-sc-id" />
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">ชื่อผลงาน / โครงงาน</label>
+            <input type="text" id="edit-sc-title" class="form-input" required />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">รางวัล / ความโดดเด่น</label>
+            <input type="text" id="edit-sc-award" class="form-input" placeholder="เช่น รางวัลชนะเลิศ อันดับ 1 การประกวด..." required />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">ชื่อนักเรียนผู้จัดทำ (พร้อมระดับชั้น)</label>
+            <input type="text" id="edit-sc-students" class="form-input" placeholder="เช่น ด.ช. สมชาย และ ด.ญ. สมหญิง (ม.3/1)" required />
+          </div>
+
+          <!-- Upload Dropzone -->
+          <div class="form-group">
+            <label class="form-label">อัปโหลดรูปภาพผลงาน</label>
+            <div class="upload-dropzone">
+              <input type="file" accept="image/*" style="display:none;" />
+              <i class="fas fa-trophy upload-icon"></i>
+              <div class="upload-text-main">ลากไฟล์ภาพมาวาง หรือคลิกเพื่ออัปโหลด</div>
+            </div>
+            <div class="upload-preview-container"></div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="window.app.closeModal('edit-showcase-modal')">ยกเลิก</button>
+          <button type="submit" class="btn btn-primary">บันทึกผลงาน</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 8: Share & QR Code Modal -->
+  <div id="share-modal" class="modal-backdrop">
+    <div class="modal-card" style="max-width: 480px;">
+      <div class="modal-header">
+        <h3 class="modal-title"><i class="fas fa-share-nodes text-gradient"></i> แชร์โปรไฟล์และรายงานฝึกสอน</h3>
+        <button class="modal-close-btn" onclick="window.app.closeModal('share-modal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="share-content-box">
+          <div class="qr-code-wrapper" id="qrcode-container">
+            <!-- QR Code generated here -->
+          </div>
+          <p style="font-size: 0.85rem; color: var(--text-secondary);">
+            สแกน QR Code นี้เพื่อเปิดดูพอร์ตโฟลิโอและรายงานฝึกสอนในโหมดสาธารณะได้ทันที
+          </p>
+
+          <div class="share-link-input-group">
+            <input type="text" id="share-url-input" class="share-link-input" readonly />
+            <button class="btn btn-primary" onclick="window.appShare.copyShareLink()">
+              <i class="fas fa-copy"></i> คัดลอก
+            </button>
+          </div>
+
+          <div style="display: flex; gap: 0.75rem; width: 100%; margin-top: 0.5rem;">
+            <button class="btn btn-outline" style="flex: 1;" onclick="window.appStorage.exportJSON()">
+              <i class="fas fa-download"></i> สำรองไฟล์ JSON
+            </button>
+            <button class="btn btn-outline" style="flex: 1;" onclick="window.appShare.printReport()">
+              <i class="fas fa-print"></i> พิมพ์รายงาน
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 8: Google Drive Cloud Integration Settings -->
+  <div id="gdrive-settings-modal" class="modal-backdrop">
+    <div class="modal-card" style="max-width: 700px;">
+      <div class="modal-header">
+        <h3 class="modal-title"><i class="fab fa-google-drive" style="color:var(--accent-cyan);"></i> เชื่อมต่อ Google Drive อัตโนมัติ</h3>
+        <button class="modal-close-btn" onclick="window.app.closeModal('gdrive-settings-modal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div style="background:rgba(6,182,212,0.1); border:1px solid rgba(6,182,212,0.3); border-radius:var(--radius-md); padding:1rem; margin-bottom:1rem;">
+          <div style="font-weight:700; color:var(--accent-cyan); font-size:0.95rem; margin-bottom:0.25rem;">
+            <i class="fas fa-magic"></i> อัปโหลดรูปจากเครื่อง ➡️ บันทึกลง Google Drive ของคุณทันที!
+          </div>
+          <p style="font-size:0.85rem; color:var(--text-secondary); line-height:1.6;">
+            ระบบจะอัปโหลดรูปโปรไฟล์, โลโก้โรงเรียน, แกลเลอรี และไฟล์ PDF แผนการสอน ไปเก็บไว้ในโฟลเดอร์ <strong>"ClassMate_Practicum_Files"</strong> ใน Google Drive ของคุณโดยอัตโนมัติ
+          </p>
+        </div>
+
+        <h4 style="font-size:0.95rem; font-weight:700; margin-bottom:0.5rem;"><i class="fas fa-list-ol"></i> วิธีตั้งค่าใน 1 นาที (ทำเพียงครั้งเดียว):</h4>
+        <ol style="font-size:0.85rem; color:var(--text-secondary); padding-left:1.25rem; display:flex; flex-direction:column; gap:0.45rem; line-height:1.6;">
+          <li>เปิดเว็บไซต์ <a href="https://script.google.com" target="_blank" style="color:var(--primary-500); font-weight:600; text-decoration:underline;">script.google.com</a> แล้วกด <strong>"โครงการใหม่ (New Project)"</strong></li>
+          <li>ลบโค้ดเดิมทั้งหมด แล้วกดปุ่ม <strong>"คัดลอกโค้ดสคริปต์"</strong> ด้านล่างนี้ไปวาง</li>
+          <li>กดปุ่ม <strong>"การทำให้ใช้งานได้ (Deploy)"</strong> ➡️ <strong>"การทำให้ใช้งานได้รายการใหม่ (New deployment)"</strong> ➡️ เลือกประเภท <strong>"เว็บแอป (Web app)"</strong></li>
+          <li>ตั้งค่าช่อง <em>"ผู้มีสิทธิ์เข้าถึง (Who has access)"</em> เป็น <strong>"ทุกคน (Anyone)"</strong> แล้วกด <strong>"ทำให้ใช้งานได้ (Deploy)"</strong></li>
+          <li>คัดลอก URL เว็บแอปที่ได้ มาวางในช่องด้านล่างนี้ แล้วกดบันทึก</li>
+        </ol>
+
+        <div style="margin: 1rem 0;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.35rem;">
+            <label class="form-label" style="margin:0;">โค้ด Google Apps Script:</label>
+            <button type="button" class="btn btn-sm btn-outline" onclick="window.app.copyGDriveCode()" style="font-size:0.78rem; padding:0.25rem 0.6rem;">
+              <i class="fas fa-copy"></i> คัดลอกโค้ดสคริปต์
+            </button>
+          </div>
+          <textarea id="gdrive-code-block" class="form-textarea" rows="5" readonly style="font-family:monospace; font-size:0.75rem; background:rgba(0,0,0,0.5); color:#a5f3fc;"></textarea>
+        </div>
+
+        <form onsubmit="window.app.saveGDriveUrl(event)">
+          <div class="form-group">
+            <label class="form-label">วาง URL เว็บแอป Google Apps Script (Web App URL):</label>
+            <input type="url" id="gdrive-script-url-input" class="form-input" placeholder="https://script.google.com/macros/s/.../exec" required />
+            <span id="gdrive-connection-status" style="font-size:0.8rem; margin-top:0.35rem; display:block;"></span>
+          </div>
+
+          <div style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1rem;">
+            <button type="button" class="btn btn-outline" onclick="window.app.closeModal('gdrive-settings-modal')">ปิด</button>
+            <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> บันทึกการเชื่อมต่อ</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 9: Authentication & Account Management Modal -->
+  <div id="auth-modal" class="modal-backdrop">
+    <div class="modal-card" style="max-width: 520px;">
+      <div class="modal-header">
+        <h3 id="auth-modal-title" class="modal-title"><i class="fas fa-user-shield" style="color:var(--primary-500);"></i> ระบบบัญชีพอร์ตโฟลิโอนักศึกษา</h3>
+        <button class="modal-close-btn" onclick="window.app.closeModal('auth-modal')">&times;</button>
+      </div>
+
+      <!-- Auth Tabs Switcher (Login / Register / Account Info) -->
+      <div style="display:flex; gap:0.5rem; padding: 0.75rem 1.5rem 0; border-bottom: 1px solid var(--border-color); background:var(--bg-glass);">
+        <button id="auth-tab-btn-login" class="btn btn-sm btn-primary" onclick="window.app.switchAuthTab('login')">
+          <i class="fas fa-sign-in-alt"></i> เข้าสู่ระบบ
+        </button>
+        <button id="auth-tab-btn-register" class="btn btn-sm btn-outline" onclick="window.app.switchAuthTab('register')">
+          <i class="fas fa-user-plus"></i> สมัครใช้งานใหม่
+        </button>
+      </div>
+
+      <div class="modal-body">
+        
+        <!-- Tab 1: Login Form -->
+        <div id="auth-login-section">
+          <form onsubmit="window.app.handleLogin(event)">
+            <div class="form-group">
+              <label class="form-label">รหัสนักศึกษา (Student ID)</label>
+              <input type="text" id="login-student-id" class="form-input" placeholder="เช่น 65011428019" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label">รหัสผ่าน (Password / PIN)</label>
+              <input type="password" id="login-password" class="form-input" placeholder="กรอกรหัสผ่านของคุณ" required />
+            </div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:1.25rem;">
+              <button type="button" class="btn btn-outline" onclick="window.app.closeModal('auth-modal')">ยกเลิก</button>
+              <button type="submit" class="btn btn-primary"><i class="fas fa-sign-in-alt"></i> เข้าสู่ระบบ</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Tab 2: Register Form -->
+        <div id="auth-register-section" style="display:none;">
+          <form onsubmit="window.app.handleRegister(event)">
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">รหัสนักศึกษา</label>
+                <input type="text" id="reg-student-id" class="form-input" placeholder="เช่น 65011428019" required />
+              </div>
+              <div class="form-group">
+                <label class="form-label">ชื่อ - นามสกุล</label>
+                <input type="text" id="reg-student-name" class="form-input" placeholder="เช่น นายสมชาย ใจดี" required />
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">สาขาวิชา / เอก</label>
+              <input type="text" id="reg-student-major" class="form-input" placeholder="เช่น สาขาวิชาคอมพิวเตอร์ศึกษา" required />
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">คณะ</label>
+                <input type="text" id="reg-student-faculty" class="form-input" value="คณะครุศาสตร์ / ศึกษาศาสตร์" required />
+              </div>
+              <div class="form-group">
+                <label class="form-label">มหาวิทยาลัย</label>
+                <input type="text" id="reg-student-uni" class="form-input" placeholder="เช่น มหาวิทยาลัย..." required />
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">ตั้งรหัสผ่านสำหรับเข้าแก้ไขข้อมูล</label>
+              <input type="password" id="reg-password" class="form-input" placeholder="กำหนดรหัสผ่านของคุณ" required />
+            </div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:1.25rem;">
+              <button type="button" class="btn btn-outline" onclick="window.app.closeModal('auth-modal')">ยกเลิก</button>
+              <button type="submit" class="btn btn-primary"><i class="fas fa-check-circle"></i> สร้างบัญชีพอร์ตโฟลิโอ</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Tab 3: Current Logged In Profile Manager -->
+        <div id="auth-profile-section" style="display:none;">
+          <div style="text-align:center; padding:1rem 0;">
+            <div style="width:60px; height:60px; border-radius:50%; background:var(--grad-primary); color:#fff; display:inline-flex; align-items:center; justify-content:center; font-size:1.8rem; margin-bottom:0.5rem;">
+              <i class="fas fa-user-graduate"></i>
+            </div>
+            <h4 id="auth-current-name" style="font-size:1.2rem; font-weight:700;"></h4>
+            <div id="auth-current-id" style="font-size:0.85rem; color:var(--text-muted);"></div>
+            <div id="auth-current-major" style="font-size:0.85rem; color:var(--primary-500); margin-top:0.25rem;"></div>
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:0.65rem; margin-top:1rem;">
+            <button class="btn btn-outline" onclick="window.app.closeModal('auth-modal'); window.app.openEditProfileModal();">
+              <i class="fas fa-user-edit"></i> แก้ไขข้อมูลพอร์ตโฟลิโอนี้
+            </button>
+            <button class="btn btn-outline" onclick="window.app.closeModal('auth-modal'); window.appShare.openShareModal();">
+              <i class="fas fa-share-alt"></i> แชร์ลิงก์พอร์ตของฉัน
+            </button>
+            <button class="btn btn-outline" style="color:#ef4444; border-color:rgba(239,68,68,0.4);" onclick="window.appAuth.logout()">
+              <i class="fas fa-sign-out-alt"></i> ออกจากระบบ (Logout)
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Lightbox Modal -->
+  <div id="lightbox-modal" class="lightbox-modal" onclick="window.appGallery.closeLightbox()">
+    <button class="lightbox-close-btn">&times;</button>
+    <div class="lightbox-img-wrapper" onclick="event.stopPropagation()">
+      <img id="lightbox-img" src="" alt="Enlarged view" class="lightbox-img" />
+      <div class="lightbox-caption">
+        <h4 id="lightbox-title" style="font-size: 1.2rem; margin-bottom: 0.25rem;"></h4>
+        <p id="lightbox-desc" style="color: #cbd5e1; font-size: 0.9rem;"></p>
+        <div id="lightbox-meta" style="margin-top: 0.5rem; display: flex; gap: 0.5rem; justify-content: center; align-items: center;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- App Scripts -->
+  <script src="js/mockData.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/gdrive.js"></script>
+  <script src="js/gallery.js"></script>
+  <script src="js/share.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
