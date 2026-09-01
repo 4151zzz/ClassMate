@@ -1,85 +1,93 @@
 /**
  * ClassMate Practicum - Share, QR Code & Public View Controller
- * 
- * Embeds full student portfolio into URL Hash via LZ-String compression
- * so the link works 100% reliably across any device/browser without a server.
+ *
+ * HOW IT WORKS:
+ * When "แชร์โปรไฟล์" is clicked, the ENTIRE portfolio is LZ-compressed
+ * into the URL hash (#portfolio=...) so it is self-contained.
+ * The viewer gets all data directly from the URL — no server needed.
+ *
+ * IMPORTANT: loadFromHash() is called both here and from app.js AFTER
+ * window.app is created. Do NOT call window.app.renderAll() here.
  */
 
 class ShareManager {
   constructor() {
     this.isPublicMode = false;
     this.sharedData = null;
-    this.checkInitialMode();
-  }
+    this._decodedData = null;
 
-  // Check URL parameters and hash for view mode and embedded data
-  async checkInitialMode() {
+    // Decode the hash immediately so data is ready when app.js calls renderAll()
+    this._tryDecodeHash();
+
+    // Set public mode based on URL
     const urlParams = new URLSearchParams(window.location.search);
-    const hasViewMode = urlParams.get('mode') === 'view';
-    const hasPortfolioHash = window.location.hash && window.location.hash.includes('portfolio=');
-    const studentId = urlParams.get('id') || urlParams.get('user');
-
-    if (hasViewMode || hasPortfolioHash || studentId) {
-      this.setPublicMode(true);
-
-      // 1. Try decoding from URL hash (fastest & most reliable)
-      if (hasPortfolioHash) {
-        this.loadFromHash();
-      }
-
-      // 2. Try fetching from Cloud if connected
-      if (studentId && window.appGDrive && window.appGDrive.isConfigured()) {
-        try {
-          const cloudData = await window.appGDrive.fetchPortfolioFromCloud(studentId);
-          if (cloudData) {
-            this.sharedData = cloudData;
-            window.appStorage.saveDataForUser(studentId, cloudData);
-            window.appStorage.getData = () => cloudData;
-            if (window.app) window.app.renderAll();
-          }
-        } catch (e) {
-          console.warn('Cloud fetch fallback', e);
-        }
-      }
+    if (urlParams.get('mode') === 'view' || window.location.hash.includes('portfolio=')) {
+      this.isPublicMode = true;
     }
   }
 
-  // Decode and load portfolio data embedded in the URL hash
-  loadFromHash() {
+  // Attempt to decode portfolio data from URL hash RIGHT NOW (synchronously if LZString ready)
+  _tryDecodeHash() {
+    const hash = window.location.hash;
+    if (!hash || !hash.includes('portfolio=')) return;
+
+    const encoded = hash.split('portfolio=')[1];
+    if (!encoded) return;
+
+    if (typeof LZString === 'undefined') {
+      // LZString CDN not ready yet — app.js init will retry via loadFromHash()
+      return;
+    }
+
     try {
-      const hash = window.location.hash;
-      if (!hash || !hash.includes('portfolio=')) return;
-
-      const encoded = hash.split('portfolio=')[1];
-      if (!encoded) return;
-
-      if (typeof LZString === 'undefined') {
-        setTimeout(() => this.loadFromHash(), 300);
-        return;
-      }
-
       const json = LZString.decompressFromEncodedURIComponent(encoded);
       if (!json) return;
+      this._decodedData = JSON.parse(json);
+      this.sharedData = this._decodedData;
 
-      const portfolioData = JSON.parse(json);
-      this.sharedData = portfolioData;
-
-      // Save to local storage for caching
-      const studentId = portfolioData.student?.studentId || 'shared_user';
+      // Override getData so that when app.js calls renderAll(), it reads the right data
       if (window.appStorage) {
-        window.appStorage.saveDataForUser(studentId, portfolioData);
-        window.appStorage.getData = () => portfolioData;
-      }
-
-      if (window.app) {
-        window.app.renderAll();
+        window.appStorage.getData = () => this._decodedData;
+        window.appStorage._isSharedView = true;
       }
     } catch (err) {
-      console.error('Failed to decode shared portfolio from URL:', err);
+      console.error('[ShareManager] Failed to decode URL hash data:', err);
     }
   }
 
-  // Set Public (View-Only) or Edit Mode
+  // Called by app.js init() after window.app exists
+  loadFromHash() {
+    const hash = window.location.hash;
+    if (!hash || !hash.includes('portfolio=')) return false;
+
+    const encoded = hash.split('portfolio=')[1];
+    if (!encoded) return false;
+
+    if (typeof LZString === 'undefined') {
+      console.warn('[ShareManager] LZString not ready in loadFromHash');
+      return false;
+    }
+
+    try {
+      const json = LZString.decompressFromEncodedURIComponent(encoded);
+      if (!json) return false;
+
+      const data = JSON.parse(json);
+      this._decodedData = data;
+      this.sharedData = data;
+
+      // Override storage so app always reads shared data
+      window.appStorage.getData = () => data;
+      window.appStorage._isSharedView = true;
+
+      return true;
+    } catch (err) {
+      console.error('[ShareManager] loadFromHash error:', err);
+      return false;
+    }
+  }
+
+  // Set Public (View-Only) or Edit Mode — called after DOM is ready
   setPublicMode(isPublic) {
     this.isPublicMode = isPublic;
     if (isPublic) {
@@ -116,24 +124,22 @@ class ShareManager {
     }
   }
 
-  // Generate shareable link with embedded portfolio data
+  // Compress all portfolio data into a self-contained share URL
   getShareUrl() {
-    const rawData = window.appStorage.getData ? window.appStorage.getData() : {};
-    const studentId = (rawData.student && rawData.student.studentId) || (window.appAuth && window.appAuth.getCurrentUser() && window.appAuth.getCurrentUser().studentId);
-
-    const url = new URL(window.location.origin + window.location.pathname);
-    if (studentId && studentId !== 'XXXXXXXXXXX') {
-      url.searchParams.set('id', studentId);
-    }
-    url.searchParams.set('mode', 'view');
-
-    if (typeof LZString !== 'undefined') {
-      const json = JSON.stringify(rawData);
-      const compressed = LZString.compressToEncodedURIComponent(json);
-      return url.href + '#portfolio=' + compressed;
+    if (typeof LZString === 'undefined') {
+      window.showToast('กรุณารอสักครู่แล้วลองใหม่ (กำลังโหลด LZ-String)', 'error');
+      return window.location.origin + window.location.pathname + '?mode=view';
     }
 
-    return url.href;
+    const rawData = window.appStorage._isSharedView && this._decodedData
+      ? this._decodedData
+      : (window.appStorage._originalGetData ? window.appStorage._originalGetData() : window.appStorage.getData());
+
+    const json = JSON.stringify(rawData);
+    const compressed = LZString.compressToEncodedURIComponent(json);
+
+    const base = window.location.origin + window.location.pathname;
+    return base + '?mode=view#portfolio=' + compressed;
   }
 
   // Open Share Modal & Generate QR Code
@@ -145,32 +151,29 @@ class ShareManager {
 
     if (input) input.value = shareUrl;
 
-    // Update browser address bar hash seamlessly so if user copies address bar it has full data
-    if (shareUrl.includes('#portfolio=')) {
-      const hashPart = shareUrl.substring(shareUrl.indexOf('#'));
-      history.replaceState(null, '', window.location.pathname + window.location.search + hashPart);
-    }
-
     if (qrContainer) {
       qrContainer.innerHTML = '';
-      const apiQr = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(shareUrl)}`;
-      qrContainer.innerHTML = `<img src="${apiQr}" alt="QR Code" style="width:180px;height:180px;" />`;
+      // Shorten QR to base URL only (hash too large for QR), show full link in text
+      const qrTarget = window.location.origin + window.location.pathname + '?mode=view';
+      const apiQr = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(qrTarget)}`;
+      qrContainer.innerHTML = `<img src="${apiQr}" alt="QR Code" style="width:180px;height:180px;" />
+        <p style="font-size:0.7rem;color:var(--text-muted);margin-top:0.5rem;text-align:center;">QR เปิดหน้าเว็บเท่านั้น<br>ใช้ปุ่ม "คัดลอกลิงก์" เพื่อแชร์พร้อมข้อมูล</p>`;
     }
 
     if (modal) modal.classList.add('active');
   }
 
-  // Copy link
+  // Copy link to clipboard
   async copyShareLink() {
     const input = document.getElementById('share-url-input');
     if (input) {
       try {
         await navigator.clipboard.writeText(input.value);
-        window.showToast('คัดลอกลิงก์แชร์โปรไฟล์สำเร็จแล้ว!', 'success');
+        window.showToast('✅ คัดลอกลิงก์แชร์พอร์ตโฟลิโอสำเร็จ! ส่งให้คนอื่นเปิดได้เลย', 'success');
       } catch (err) {
         input.select();
         document.execCommand('copy');
-        window.showToast('คัดลอกลิงก์แชร์โปรไฟล์สำเร็จ!', 'success');
+        window.showToast('✅ คัดลอกลิงก์สำเร็จ!', 'success');
       }
     }
   }

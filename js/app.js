@@ -17,27 +17,36 @@ class AppController {
 
   // Initialize App
   init() {
-    this.applyTheme(this.currentTheme);
+    this.applyTheme('light');
     this.bindEvents();
     this.updateAuthUI();
 
-    // If viewing a shared portfolio via URL hash, allow share.js to decode first
-    const isSharedView = new URLSearchParams(window.location.search).get('mode') === 'view'
-      && window.location.hash.includes('portfolio=');
+    const urlParams = new URLSearchParams(window.location.search);
+    const isViewMode = urlParams.get('mode') === 'view';
+    const hasHashData = window.location.hash && window.location.hash.includes('portfolio=');
 
-    if (isSharedView) {
-      // Wait a tick for LZ-String CDN to be available and share.js to decode
-      setTimeout(() => {
-        if (window.appShare && window.appShare.sharedData) {
-          this.renderAll();
-        } else {
-          // Retry once more if CDN was slow
-          setTimeout(() => {
-            if (window.appShare) window.appShare.loadFromHash();
+    if (isViewMode || hasHashData) {
+      // Apply public mode UI
+      if (window.appShare) window.appShare.setPublicMode(true);
+
+      if (hasHashData) {
+        // LZString might load async from CDN — wait for it, then decode + render
+        const tryLoad = (attemptsLeft) => {
+          if (typeof LZString !== 'undefined') {
+            const decoded = window.appShare.loadFromHash();
             this.renderAll();
-          }, 600);
-        }
-      }, 200);
+          } else if (attemptsLeft > 0) {
+            setTimeout(() => tryLoad(attemptsLeft - 1), 300);
+          } else {
+            // LZString never loaded — render with whatever data we have
+            this.renderAll();
+          }
+        };
+        tryLoad(10);
+      } else {
+        // view mode with no hash — just render (will show empty template for viewer)
+        this.renderAll();
+      }
     } else {
       this.renderAll();
     }

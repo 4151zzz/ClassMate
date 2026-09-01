@@ -74,6 +74,18 @@ class StorageManager {
     }
   }
 
+  // Read real user data from localStorage regardless of any view-mode override
+  _originalGetData() {
+    try {
+      const key = this.getCurrentStorageKey();
+      const json = localStorage.getItem(key);
+      if (!json) return JSON.parse(JSON.stringify(DEFAULT_PRACTICUM_DATA));
+      return JSON.parse(json);
+    } catch (e) {
+      return JSON.parse(JSON.stringify(DEFAULT_PRACTICUM_DATA));
+    }
+  }
+
   // Save app state (Per-user or default) & Auto Sync to Cloud
   saveData(data) {
     try {
