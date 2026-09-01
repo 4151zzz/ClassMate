@@ -20,7 +20,27 @@ class AppController {
     this.applyTheme(this.currentTheme);
     this.bindEvents();
     this.updateAuthUI();
-    this.renderAll();
+
+    // If viewing a shared portfolio via URL hash, allow share.js to decode first
+    const isSharedView = new URLSearchParams(window.location.search).get('mode') === 'view'
+      && window.location.hash.includes('portfolio=');
+
+    if (isSharedView) {
+      // Wait a tick for LZ-String CDN to be available and share.js to decode
+      setTimeout(() => {
+        if (window.appShare && window.appShare.sharedData) {
+          this.renderAll();
+        } else {
+          // Retry once more if CDN was slow
+          setTimeout(() => {
+            if (window.appShare) window.appShare.loadFromHash();
+            this.renderAll();
+          }, 600);
+        }
+      }, 200);
+    } else {
+      this.renderAll();
+    }
   }
 
   // Theme Toggler
