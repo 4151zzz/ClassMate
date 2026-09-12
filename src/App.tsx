@@ -383,6 +383,8 @@ export function App() {
         isOpen={cloudOpen}
         onClose={() => setCloudOpen(false)}
         onExportJSON={exportJSON}
+        studentId={data.student.studentId}
+        portfolioData={data}
       />
 
       <ProfileEditDialog

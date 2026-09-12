@@ -11,6 +11,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { GalleryItem } from "@/types/practicum";
+import { toast } from "sonner";
+import { gdrive } from "@/lib/gdrive";
 
 interface GalleryUploadDialogProps {
   isOpen: boolean;
@@ -31,16 +33,34 @@ export const GalleryUploadDialog: React.FC<GalleryUploadDialogProps> = ({
   const [url, setUrl] = useState("");
   const [preview, setPreview] = useState("");
 
-  const handleImageFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handleImageFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const result = event.target?.result as string;
-        setPreview(result);
-        setUrl(result);
-      };
-      reader.readAsDataURL(file);
+      setIsUploading(true);
+      if (gdrive.isConfigured()) {
+        toast.loading("กำลังอัปโหลดรูปภาพไปยัง Google Drive...");
+        try {
+          const cloudUrl = await gdrive.uploadFile(file, "ClassMate_Practicum_Files");
+          setPreview(cloudUrl);
+          setUrl(cloudUrl);
+          toast.dismiss();
+          toast.success("อัปโหลดรูปภาพขึ้น Google Drive สำเร็จ!");
+        } catch (err) {
+          toast.dismiss();
+          toast.error("เกิดข้อผิดพลาดในการเชื่อมต่อ Google Drive");
+          const localUrl = await gdrive.readFileAsDataURL(file);
+          setPreview(localUrl);
+          setUrl(localUrl);
+        }
+      } else {
+        const localUrl = await gdrive.readFileAsDataURL(file);
+        setPreview(localUrl);
+        setUrl(localUrl);
+        toast.info("บันทึกรูปภาพในเครื่อง (สามารถเชื่อมต่อ Google Drive ได้ที่เมนู Cloud)");
+      }
+      setIsUploading(false);
     }
   };
 
