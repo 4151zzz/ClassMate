@@ -3,10 +3,12 @@ import { motion, useMotionValue, useSpring, useTransform, useMotionTemplate } fr
 import { ChevronDown, Mail, Share2, Lock, ArrowRight, Film } from "lucide-react";
 import { StudentProfile, SchoolInfo } from "@/types/practicum";
 import { MagneticButton } from "@/components/ui/magnetic-button";
+import { GoogleUser } from "@/hooks/useGoogleAuth";
 
 interface CinematicViewerHeroProps {
   student: StudentProfile;
   school: SchoolInfo;
+  currentUser?: GoogleUser | null;
   onScrollToContent: () => void;
   onOpenShare: () => void;
   onUnlockEdit: () => void;
@@ -15,6 +17,7 @@ interface CinematicViewerHeroProps {
 export const CinematicViewerHero: React.FC<CinematicViewerHeroProps> = ({
   student,
   school,
+  currentUser,
   onScrollToContent,
   onOpenShare,
   onUnlockEdit,
@@ -122,11 +125,45 @@ export const CinematicViewerHero: React.FC<CinematicViewerHeroProps> = ({
           <MagneticButton
             strength={0.25}
             onClick={onUnlockEdit}
-            className="text-xs tracking-wider uppercase text-slate-400 hover:text-cyan-300 hover:bg-white/5 gap-1.5 px-3 py-1.5 rounded-full border border-transparent hover:border-cyan-500/20"
-            title="เข้าสู่โหมดจัดการ/แก้ไข"
+            className="text-xs tracking-wider uppercase text-slate-300 hover:text-white hover:bg-white/10 gap-2 px-4 py-1.5 rounded-full border border-white/15 backdrop-blur-md"
+            title={currentUser ? "จัดการบัญชี Google" : "เข้าสู่ระบบด้วย Google"}
           >
-            <Lock className="w-3 h-3 text-cyan-400" />
-            <span className="hidden sm:inline">จัดการข้อมูล</span>
+            {currentUser ? (
+              <>
+                <img
+                  src={currentUser.picture}
+                  alt={currentUser.name}
+                  className="w-4 h-4 rounded-full object-cover border border-cyan-400/60"
+                />
+                <span className="hidden sm:inline font-mono lowercase text-[11px] text-cyan-300">
+                  {currentUser.email}
+                </span>
+                <span className="sm:hidden">บัญชี</span>
+              </>
+            ) : (
+              <>
+                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24">
+                  <path
+                    fill="#4285F4"
+                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                  />
+                  <path
+                    fill="#34A853"
+                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                  />
+                  <path
+                    fill="#FBBC05"
+                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+                  />
+                  <path
+                    fill="#EA4335"
+                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+                  />
+                </svg>
+                <span className="hidden sm:inline">เข้าสู่ระบบ Google</span>
+                <span className="sm:hidden">เข้าสู่ระบบ</span>
+              </>
+            )}
           </MagneticButton>
         </div>
       </header>

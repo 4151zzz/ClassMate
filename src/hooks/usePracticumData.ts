@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import LZString from "lz-string";
 import { toast } from "sonner";
 import {
@@ -14,93 +14,151 @@ import {
   StudentShowcase,
 } from "@/types/practicum";
 import { DEFAULT_PRACTICUM_DATA } from "@/lib/mockData";
+import { GoogleUser } from "@/hooks/useGoogleAuth";
 
-const STORAGE_KEY = "classmate_practicum_portfolio_v2";
-const AUTH_KEY = "classmate_is_editor_authenticated";
+const BASE_STORAGE_KEY = "classmate_practicum_portfolio_v2";
 
-export function usePracticumData() {
-  const [data, setData] = useState<PracticumData>(() => {
-    // 1. Try to load from URL hash if shared
+export function usePracticumData(currentUser?: GoogleUser | null) {
+  const getStorageKey = (email?: string) => {
+    return email
+      ? `classmate_portfolio_${email.toLowerCase().trim()}`
+      : BASE_STORAGE_KEY;
+  };
+
+  const activeKey = getStorageKey(currentUser?.email);
+
+  // Initialize data
+  const loadDataForKey = (key: string, user?: GoogleUser | null): PracticumData => {
+    // 1. Try URL hash if shared
     try {
       const hash = window.location.hash.replace(/^#/, "");
       if (hash.startsWith("data=")) {
         const compressed = hash.replace("data=", "");
         const decompressed = LZString.decompressFromEncodedURIComponent(compressed);
         if (decompressed) {
-          const parsed = JSON.parse(decompressed);
-          return parsed;
+          return JSON.parse(decompressed);
         }
       }
     } catch (e) {
       console.warn("Failed to parse shared data from hash:", e);
     }
 
-    // 2. Try localStorage
+    // 2. Try localStorage for this account
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
+      const saved = localStorage.getItem(key);
       if (saved) {
-        const parsed = JSON.parse(saved);
-        return parsed;
+        return JSON.parse(saved);
       }
     } catch (e) {
-      console.warn("Failed to load data from localStorage:", e);
+      console.warn(`Failed to load data for key ${key}:`, e);
     }
 
-    // 3. Fallback to default mock data
+    // 3. Fallback to default mock data (pre-filled with Google User info if logged in)
+    if (user) {
+      return {
+        ...DEFAULT_PRACTICUM_DATA,
+        student: {
+          ...DEFAULT_PRACTICUM_DATA.student,
+          fullName: user.name || DEFAULT_PRACTICUM_DATA.student.fullName,
+          email: user.email,
+          avatar: user.picture || DEFAULT_PRACTICUM_DATA.student.avatar,
+        },
+      };
+    }
+
     return DEFAULT_PRACTICUM_DATA;
-  });
+  };
+
+  const [data, setData] = useState<PracticumData>(() =>
+    loadDataForKey(activeKey, currentUser)
+  );
 
   const [isEditMode, setIsEditMode] = useState<boolean>(() => {
-    const searchParams = new URLSearchParams(window.location.search);
-    return searchParams.get("edit") === "true";
+    return !!currentUser;
   });
 
-  // Persist data on change
+  // Track previous user to detect account changes
+  const prevUserEmailRef = useRef<string | undefined>(currentUser?.email);
+
+  useEffect(() => {
+    const currentEmail = currentUser?.email;
+    if (currentEmail !== prevUserEmailRef.current) {
+      prevUserEmailRef.current = currentEmail;
+      const newKey = getStorageKey(currentEmail);
+      const loaded = loadDataForKey(newKey, currentUser);
+      setData(loaded);
+      // Auto enable edit mode for logged in user, disable for guest
+      setIsEditMode(!!currentUser);
+    }
+  }, [currentUser]);
+
+  // Persist data on change into current user's isolated storage
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      localStorage.setItem(activeKey, JSON.stringify(data));
     } catch (e) {
-      console.error("Failed to save data to localStorage:", e);
+      console.error(`Failed to save data to localStorage key ${activeKey}:`, e);
     }
-  }, [data]);
+  }, [data, activeKey]);
 
-  // Persist edit mode auth
-  useEffect(() => {
-    localStorage.setItem(AUTH_KEY, isEditMode ? "true" : "false");
-  }, [isEditMode]);
-
-  const toggleEditMode = useCallback((authenticated = false) => {
-    if (isEditMode) {
-      setIsEditMode(false);
-      toast.info("สลับไปยังโหมดผู้เข้าชม (Viewer Mode)");
-    } else {
-      if (authenticated) {
-        setIsEditMode(true);
-        toast.success("ปลดล็อกโหมดแก้ไข (Editor Mode)");
+  const toggleEditMode = useCallback(
+    (authenticated = false) => {
+      if (isEditMode) {
+        setIsEditMode(false);
+        toast.info("สลับไปยังโหมดผู้เข้าชม (Viewer Mode)");
+      } else {
+        if (currentUser || authenticated) {
+          setIsEditMode(true);
+          toast.success("เข้าสู่โหมดแก้ไข (Editor Mode)");
+        } else {
+          toast.error("กรุณาเข้าสู่ระบบด้วย Google เพื่อแก้ไขพอร์ตโฟลิโอ");
+        }
       }
-    }
-  }, [isEditMode]);
+    },
+    [isEditMode, currentUser]
+  );
 
-  // Reset to default
+  // Reset to default for current user
   const resetToDefault = useCallback(() => {
-    if (window.confirm("คุณต้องการรีเซ็ตข้อมูลทั้งหมดกลับเป็นค่าเริ่มต้นใช่หรือไม่? (การกระทำนี้ไม่สามารถย้อนกลับได้)")) {
-      setData(DEFAULT_PRACTICUM_DATA);
-      localStorage.removeItem(STORAGE_KEY);
+    if (
+      window.confirm(
+        "คุณต้องการรีเซ็ตข้อมูลทั้งหมดกลับเป็นค่าเริ่มต้นใช่หรือไม่? (การกระทำนี้ไม่สามารถย้อนกลับได้)"
+      )
+    ) {
+      const freshData = currentUser
+        ? {
+            ...DEFAULT_PRACTICUM_DATA,
+            student: {
+              ...DEFAULT_PRACTICUM_DATA.student,
+              fullName: currentUser.name || DEFAULT_PRACTICUM_DATA.student.fullName,
+              email: currentUser.email,
+              avatar: currentUser.picture || DEFAULT_PRACTICUM_DATA.student.avatar,
+            },
+          }
+        : DEFAULT_PRACTICUM_DATA;
+
+      setData(freshData);
+      localStorage.removeItem(activeKey);
       toast.success("รีเซ็ตข้อมูลพอร์ตโฟลิโอกลับสู่ค่าเริ่มต้นแล้ว");
     }
-  }, []);
+  }, [activeKey, currentUser]);
 
   // Export JSON
   const exportJSON = useCallback(() => {
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data, null, 2));
+    const dataStr =
+      "data:text/json;charset=utf-8," +
+      encodeURIComponent(JSON.stringify(data, null, 2));
     const downloadAnchor = document.createElement("a");
     downloadAnchor.setAttribute("href", dataStr);
-    downloadAnchor.setAttribute("download", `ClassMate_Portfolio_${data.student.studentId || "data"}.json`);
+    downloadAnchor.setAttribute(
+      "download",
+      `ClassMate_Portfolio_${data.student.studentId || currentUser?.email || "data"}.json`
+    );
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
     downloadAnchor.remove();
     toast.success("ดาวน์โหลดไฟล์สำรองข้อมูล JSON เรียบร้อย");
-  }, [data]);
+  }, [data, currentUser]);
 
   // Import JSON
   const importJSON = useCallback((file: File) => {
@@ -125,9 +183,11 @@ export function usePracticumData() {
   // Generate Share URL safely
   const getShareUrl = useCallback(() => {
     try {
-      // Clean oversized data URIs for URL sharing to keep link within browser safe limits
       const shareData = JSON.parse(JSON.stringify(data));
-      if (shareData.student?.avatar?.startsWith("data:") && shareData.student.avatar.length > 3000) {
+      if (
+        shareData.student?.avatar?.startsWith("data:") &&
+        shareData.student.avatar.length > 3000
+      ) {
         shareData.student.avatar = "";
       }
       const jsonStr = JSON.stringify(shareData);
@@ -199,7 +259,7 @@ export function usePracticumData() {
           : [...prev.faculty, member],
       };
     });
-    toast.success("บันทึกข้อมูลอาจารย์เรียบร้อย");
+    toast.success("บันทึกข้อมูลบุคลากรแล้ว");
   }, []);
 
   const deleteFaculty = useCallback((id: string) => {
@@ -207,10 +267,10 @@ export function usePracticumData() {
       ...prev,
       faculty: prev.faculty.filter((f) => f.id !== id),
     }));
-    toast.info("ลบข้อมูลอาจารย์เรียบร้อย");
+    toast.info("ลบข้อมูลบุคลากรเรียบร้อย");
   }, []);
 
-  // Timetable
+  // Timetable Slots
   const saveTimetableSlot = useCallback((slot: TimetableSlot) => {
     setData((prev) => {
       const exists = prev.timetable.some((s) => s.id === slot.id);
@@ -221,7 +281,7 @@ export function usePracticumData() {
           : [...prev.timetable, slot],
       };
     });
-    toast.success("บันทึกคาบสอนในตารางแล้ว");
+    toast.success("บันทึกคาบสอนเรียบร้อยแล้ว");
   }, []);
 
   const deleteTimetableSlot = useCallback((id: string) => {
@@ -243,7 +303,7 @@ export function usePracticumData() {
           : [...prev.teachingLogs, log],
       };
     });
-    toast.success("บันทึกแผนการจัดการเรียนรู้แล้ว");
+    toast.success("บันทึกแผนและบันทึกหลังสอนแล้ว");
   }, []);
 
   const deleteTeachingLog = useCallback((id: string) => {
@@ -251,7 +311,7 @@ export function usePracticumData() {
       ...prev,
       teachingLogs: prev.teachingLogs.filter((l) => l.id !== id),
     }));
-    toast.info("ลบแผนการจัดการเรียนรู้เรียบร้อย");
+    toast.info("ลบแผนการสอนเรียบร้อย");
   }, []);
 
   // Gallery
@@ -265,7 +325,7 @@ export function usePracticumData() {
           : [item, ...prev.gallery],
       };
     });
-    toast.success("บันทึกรูปภาพกิจกรรมแล้ว");
+    toast.success("บันทึกภาพกิจกรรมแล้ว");
   }, []);
 
   const deleteGalleryItem = useCallback((id: string) => {
@@ -273,18 +333,18 @@ export function usePracticumData() {
       ...prev,
       gallery: prev.gallery.filter((g) => g.id !== id),
     }));
-    toast.info("ลบรูปภาพเรียบร้อย");
+    toast.info("ลบภาพกิจกรรมเรียบร้อย");
   }, []);
 
   // Student Showcase
-  const saveShowcase = useCallback((item: StudentShowcase) => {
+  const saveShowcase = useCallback((showcase: StudentShowcase) => {
     setData((prev) => {
-      const exists = prev.studentShowcases.some((s) => s.id === item.id);
+      const exists = prev.showcases.some((s) => s.id === showcase.id);
       return {
         ...prev,
-        studentShowcases: exists
-          ? prev.studentShowcases.map((s) => (s.id === item.id ? item : s))
-          : [...prev.studentShowcases, item],
+        showcases: exists
+          ? prev.showcases.map((s) => (s.id === showcase.id ? showcase : s))
+          : [showcase, ...prev.showcases],
       };
     });
     toast.success("บันทึกผลงานนักเรียนแล้ว");
@@ -293,7 +353,7 @@ export function usePracticumData() {
   const deleteShowcase = useCallback((id: string) => {
     setData((prev) => ({
       ...prev,
-      studentShowcases: prev.studentShowcases.filter((s) => s.id !== id),
+      showcases: prev.showcases.filter((s) => s.id !== id),
     }));
     toast.info("ลบผลงานนักเรียนเรียบร้อย");
   }, []);
@@ -301,7 +361,6 @@ export function usePracticumData() {
   return {
     data,
     isEditMode,
-    setIsEditMode,
     toggleEditMode,
     resetToDefault,
     exportJSON,

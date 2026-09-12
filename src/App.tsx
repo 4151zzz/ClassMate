@@ -41,6 +41,7 @@ import { GalleryUploadDialog } from "@/components/modals/GalleryUploadDialog";
 import { ShowcaseDialog } from "@/components/modals/ShowcaseDialog";
 import { LightboxDialog } from "@/components/modals/LightboxDialog";
 
+import { useGoogleAuth } from "@/hooks/useGoogleAuth";
 import { usePracticumData } from "@/hooks/usePracticumData";
 import {
   Mentor,
@@ -52,6 +53,8 @@ import {
 } from "@/types/practicum";
 
 export function App() {
+  const { user: currentUser, login: loginWithGoogle, logout: logoutGoogle } = useGoogleAuth();
+
   const {
     data,
     isEditMode,
@@ -75,7 +78,7 @@ export function App() {
     deleteGalleryItem,
     saveShowcase,
     deleteShowcase,
-  } = usePracticumData();
+  } = usePracticumData(currentUser);
 
   // Active Tab state
   const [activeTab, setActiveTab] = useState<string>("overview");
@@ -134,6 +137,7 @@ export function App() {
           <CinematicViewerHero
             student={data.student}
             school={data.school}
+            currentUser={currentUser}
             onScrollToContent={scrollToDossier}
             onOpenShare={() => setShareOpen(true)}
             onUnlockEdit={() => setAuthOpen(true)}
@@ -143,6 +147,7 @@ export function App() {
         <div id="dossier-content" className="relative z-10 flex-1 flex flex-col">
           {/* Sticky Glassmorphic Navbar */}
           <Navbar
+            currentUser={currentUser}
             isEditMode={isEditMode}
             onOpenAuthDialog={() => setAuthOpen(true)}
             onToggleViewerMode={() => toggleEditMode(false)}
@@ -370,7 +375,9 @@ export function App() {
       <AuthDialog
         isOpen={authOpen}
         onClose={() => setAuthOpen(false)}
-        onSuccess={() => toggleEditMode(true)}
+        currentUser={currentUser}
+        onLogin={loginWithGoogle}
+        onLogout={logoutGoogle}
       />
 
       <ShareDialog
