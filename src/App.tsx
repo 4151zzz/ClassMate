@@ -63,6 +63,11 @@ export function App() {
     exportJSON,
     importJSON,
     getShareUrl,
+    publishedUid,
+    publishShareUrl,
+    isPublishing,
+    isViewingShared,
+    isLoadingCloudData,
     updateStudent,
     updateSchool,
     updateCompetencies,
@@ -131,6 +136,29 @@ export function App() {
 
         {/* Dynamic Stars Background */}
         <StarsBackgroundDemo />
+
+        {/* Top Floating Notification when Viewing Another User's Shared Link */}
+        {isViewingShared && (
+          <div className="fixed top-0 left-0 right-0 z-50 bg-cyan-950/90 border-b border-cyan-500/40 text-cyan-200 text-xs py-2 px-4 flex items-center justify-between backdrop-blur-xl shadow-[0_4px_20px_rgba(0,0,0,0.5)]">
+            <div className="flex items-center gap-2 truncate">
+              <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse shrink-0" />
+              <span className="truncate">
+                {isLoadingCloudData
+                  ? "กำลังโหลดข้อมูลพอร์ตโฟลิโอจากคลาวด์..."
+                  : `กำลังดูพอร์ตโฟลิโอของ: ${data.student.fullName || "ผู้ปฏิบัติการสอน"} (${data.student.studentId || "รหัสนักศึกษา"})`}
+              </span>
+              <span className="text-[10px] bg-cyan-500/20 text-cyan-300 px-2 py-0.5 rounded-full border border-cyan-500/30 shrink-0">
+                โหมดผู้เข้าชม (Read-Only)
+              </span>
+            </div>
+            <a
+              href={typeof window !== "undefined" ? window.location.origin + window.location.pathname : "/"}
+              className="text-[11px] text-cyan-400 hover:text-cyan-200 font-medium underline shrink-0 ml-3 transition-colors"
+            >
+              เปิดพอร์ตโฟลิโอของคุณเอง →
+            </a>
+          </div>
+        )}
 
         {/* Cinematic Jeffrey Milanes style Hero Landing for Viewer / Share Mode */}
         {!isEditMode && (
@@ -384,6 +412,11 @@ export function App() {
         isOpen={shareOpen}
         onClose={() => setShareOpen(false)}
         getShareUrl={getShareUrl}
+        publishShareUrl={publishShareUrl}
+        publishedUid={publishedUid}
+        isPublishing={isPublishing}
+        studentName={data.student.fullName}
+        studentId={data.student.studentId}
       />
 
       <CloudSyncDialog

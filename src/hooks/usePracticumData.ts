@@ -15,6 +15,11 @@ import {
 } from "@/types/practicum";
 import { DEFAULT_PRACTICUM_DATA } from "@/lib/mockData";
 import { GoogleUser } from "@/hooks/useGoogleAuth";
+import {
+  publishPortfolioToCloud,
+  fetchPortfolioFromCloud,
+  getCachedPortfolio,
+} from "@/lib/cloudShare";
 
 const BASE_STORAGE_KEY = "classmate_practicum_portfolio_v2";
 
@@ -27,9 +32,30 @@ export function usePracticumData(currentUser?: GoogleUser | null) {
 
   const activeKey = getStorageKey(currentUser?.email);
 
+  // Check if URL has a shared UID (?u=... or ?uid=... or ?id=...)
+  const getSharedUidFromUrl = (): string | null => {
+    if (typeof window === "undefined") return null;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      return params.get("u") || params.get("uid") || params.get("id");
+    } catch {
+      return null;
+    }
+  };
+
+  const initialSharedUid = getSharedUidFromUrl();
+  const [sharedUid, setSharedUid] = useState<string | null>(initialSharedUid);
+  const isViewingShared = !!sharedUid;
+
   // Initialize data
   const loadDataForKey = (key: string, user?: GoogleUser | null): PracticumData => {
-    // 1. Try URL hash if shared
+    // 1. Try URL shared UID if present (cached version first)
+    if (initialSharedUid) {
+      const cached = getCachedPortfolio(initialSharedUid);
+      if (cached) return cached;
+    }
+
+    // 2. Try URL hash if shared offline
     try {
       const hash = window.location.hash.replace(/^#/, "");
       if (hash.startsWith("data=")) {
@@ -43,7 +69,7 @@ export function usePracticumData(currentUser?: GoogleUser | null) {
       console.warn("Failed to parse shared data from hash:", e);
     }
 
-    // 2. Try localStorage for this account
+    // 3. Try localStorage for this account
     try {
       const saved = localStorage.getItem(key);
       if (saved) {
@@ -53,13 +79,15 @@ export function usePracticumData(currentUser?: GoogleUser | null) {
       console.warn(`Failed to load data for key ${key}:`, e);
     }
 
-    // 3. Fallback to default mock data (pre-filled with Google User info if logged in)
+    // 4. Fallback to default mock data (pre-filled with Google User info if logged in)
     if (user) {
+      const isPlainUsername = user.name && user.name === user.email.split("@")[0];
+      const displayName = !user.name || isPlainUsername ? DEFAULT_PRACTICUM_DATA.student.fullName : user.name;
       return {
         ...DEFAULT_PRACTICUM_DATA,
         student: {
           ...DEFAULT_PRACTICUM_DATA.student,
-          fullName: user.name || DEFAULT_PRACTICUM_DATA.student.fullName,
+          fullName: displayName,
           email: user.email,
           avatar: user.picture || DEFAULT_PRACTICUM_DATA.student.avatar,
         },
@@ -74,13 +102,50 @@ export function usePracticumData(currentUser?: GoogleUser | null) {
   );
 
   const [isEditMode, setIsEditMode] = useState<boolean>(() => {
+    // If viewing someone else's shared link, start in read-only viewer mode
+    if (initialSharedUid) return false;
     return !!currentUser;
   });
+
+  const [isLoadingCloudData, setIsLoadingCloudData] = useState<boolean>(false);
+
+  // Fetch shared portfolio from cloud if UID is in URL
+  useEffect(() => {
+    if (!sharedUid) return;
+
+    let isMounted = true;
+    setIsLoadingCloudData(true);
+
+    fetchPortfolioFromCloud(sharedUid)
+      .then((remoteData) => {
+        if (isMounted && remoteData) {
+          setData(remoteData);
+          setIsEditMode(false);
+          toast.info(`กำลังแสดงพอร์ตโฟลิโอของ: ${remoteData.student?.fullName || "ผู้ปฏิบัติการสอน"}`, {
+            description: "โหมดผู้เข้าชม (Viewer Mode)",
+            duration: 4000,
+          });
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to load shared portfolio from cloud:", err);
+      })
+      .finally(() => {
+        if (isMounted) setIsLoadingCloudData(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [sharedUid]);
 
   // Track previous user to detect account changes
   const prevUserEmailRef = useRef<string | undefined>(currentUser?.email);
 
   useEffect(() => {
+    // Do not overwrite if viewing someone else's shared link
+    if (sharedUid) return;
+
     const currentEmail = currentUser?.email;
     if (currentEmail !== prevUserEmailRef.current) {
       prevUserEmailRef.current = currentEmail;
@@ -90,16 +155,17 @@ export function usePracticumData(currentUser?: GoogleUser | null) {
       // Auto enable edit mode for logged in user, disable for guest
       setIsEditMode(!!currentUser);
     }
-  }, [currentUser]);
+  }, [currentUser, sharedUid]);
 
-  // Persist data on change into current user's isolated storage
+  // Persist data on change into current user's isolated storage (only when not viewing someone else's shared UID)
   useEffect(() => {
+    if (sharedUid) return; // Never overwrite local storage when viewing a shared link
     try {
       localStorage.setItem(activeKey, JSON.stringify(data));
     } catch (e) {
       console.error(`Failed to save data to localStorage key ${activeKey}:`, e);
     }
-  }, [data, activeKey]);
+  }, [data, activeKey, sharedUid]);
 
   const toggleEditMode = useCallback(
     (authenticated = false) => {
@@ -180,26 +246,72 @@ export function usePracticumData(currentUser?: GoogleUser | null) {
     reader.readAsText(file);
   }, []);
 
-  // Generate Share URL safely
-  const getShareUrl = useCallback(() => {
+  // Published Cloud UID for lightweight sharing
+  const [publishedUid, setPublishedUid] = useState<string>(() => {
+    return typeof window !== "undefined"
+      ? localStorage.getItem("classmate_last_published_uid") || ""
+      : "";
+  });
+  const [isPublishing, setIsPublishing] = useState<boolean>(false);
+
+  // Publish to Cloud to get lightweight share URL
+  const publishShareUrl = useCallback(async (): Promise<string> => {
+    setIsPublishing(true);
     try {
-      const shareData = JSON.parse(JSON.stringify(data));
-      if (
-        shareData.student?.avatar?.startsWith("data:") &&
-        shareData.student.avatar.length > 3000
-      ) {
-        shareData.student.avatar = "";
+      const uid = await publishPortfolioToCloud(data);
+      setPublishedUid(uid);
+      if (typeof window !== "undefined") {
+        localStorage.setItem("classmate_last_published_uid", uid);
       }
-      const jsonStr = JSON.stringify(shareData);
-      const compressed = LZString.compressToEncodedURIComponent(jsonStr);
-      const url = new URL(window.location.href);
-      url.hash = `data=${compressed}`;
-      return url.toString();
+      const baseUrl = window.location.origin + window.location.pathname;
+      const shareUrl = `${baseUrl}?u=${uid}`;
+      toast.success("สร้างลิงก์แชร์สั้นผ่านคลาวด์เรียบร้อยแล้ว", {
+        description: `UID: ${uid}`,
+      });
+      return shareUrl;
     } catch (err) {
-      console.error("Failed to generate share URL:", err);
-      return window.location.href;
+      console.warn("Failed to publish to cloud:", err);
+      toast.error("ไม่สามารถเชื่อมต่อคลาวด์เพื่อสร้างลิงก์สั้นได้");
+      throw err;
+    } finally {
+      setIsPublishing(false);
     }
   }, [data]);
+
+  // Synchronous share URL getter
+  const getShareUrl = useCallback(
+    (mode: "short" | "hash" = "short") => {
+      const baseUrl = window.location.origin + window.location.pathname;
+
+      if (mode === "short") {
+        if (publishedUid) {
+          return `${baseUrl}?u=${publishedUid}`;
+        }
+        if (data.student.studentId) {
+          return `${baseUrl}?id=${encodeURIComponent(data.student.studentId)}`;
+        }
+        return baseUrl;
+      }
+
+      // Hash mode (offline full data backup)
+      try {
+        const shareData = JSON.parse(JSON.stringify(data));
+        if (
+          shareData.student?.avatar?.startsWith("data:") &&
+          shareData.student.avatar.length > 3000
+        ) {
+          shareData.student.avatar = "";
+        }
+        const jsonStr = JSON.stringify(shareData);
+        const compressed = LZString.compressToEncodedURIComponent(jsonStr);
+        return `${baseUrl}#data=${compressed}`;
+      } catch (err) {
+        console.error("Failed to generate share URL:", err);
+        return baseUrl;
+      }
+    },
+    [data, publishedUid]
+  );
 
   // CRUD Actions
   const updateStudent = useCallback((student: Partial<StudentProfile>) => {
@@ -366,6 +478,11 @@ export function usePracticumData(currentUser?: GoogleUser | null) {
     exportJSON,
     importJSON,
     getShareUrl,
+    publishedUid,
+    publishShareUrl,
+    isPublishing,
+    isViewingShared,
+    isLoadingCloudData,
     updateStudent,
     updateSchool,
     updateCompetencies,
