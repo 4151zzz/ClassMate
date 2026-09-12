@@ -122,12 +122,23 @@ export function usePracticumData() {
     reader.readAsText(file);
   }, []);
 
-  // Generate Share URL
+  // Generate Share URL safely
   const getShareUrl = useCallback(() => {
-    const compressed = LZString.compressToEncodedURIComponent(JSON.stringify(data));
-    const url = new URL(window.location.href);
-    url.hash = `data=${compressed}`;
-    return url.toString();
+    try {
+      // Clean oversized data URIs for URL sharing to keep link within browser safe limits
+      const shareData = JSON.parse(JSON.stringify(data));
+      if (shareData.student?.avatar?.startsWith("data:") && shareData.student.avatar.length > 3000) {
+        shareData.student.avatar = "";
+      }
+      const jsonStr = JSON.stringify(shareData);
+      const compressed = LZString.compressToEncodedURIComponent(jsonStr);
+      const url = new URL(window.location.href);
+      url.hash = `data=${compressed}`;
+      return url.toString();
+    } catch (err) {
+      console.error("Failed to generate share URL:", err);
+      return window.location.href;
+    }
   }, [data]);
 
   // CRUD Actions
