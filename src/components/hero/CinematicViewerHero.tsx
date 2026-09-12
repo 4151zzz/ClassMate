@@ -90,12 +90,14 @@ export const CinematicViewerHero: React.FC<CinematicViewerHeroProps> = ({
     <section className="relative w-full min-h-screen bg-black text-white flex flex-col justify-between overflow-hidden select-none">
       {/* 1. TOP HEADER BAR */}
       <header className="w-full z-20 px-6 sm:px-12 py-6 flex items-center justify-between">
-        {/* Signature Monogram / Brand Logo */}
+        {/* Full Name Brand / Practicum Dossier Logo */}
         <div className="flex items-center gap-3">
-          <div className="font-serif italic text-2xl sm:text-3xl font-bold tracking-tighter text-white/90 drop-shadow-[0_2px_10px_rgba(255,255,255,0.2)]">
-            {firstName.charAt(0)}
-            <span className="text-cyan-400 font-sans text-xl not-italic ml-0.5">.</span>
-            <span className="font-light text-xs tracking-widest uppercase font-sans text-slate-400 block -mt-1">
+          <div>
+            <div className="font-sans text-base sm:text-xl font-black tracking-tight text-white flex items-center gap-1 drop-shadow-[0_2px_10px_rgba(255,255,255,0.2)]">
+              <span>{student.fullName}</span>
+              <span className="text-cyan-400">.</span>
+            </div>
+            <span className="font-light text-[10px] sm:text-xs tracking-widest uppercase font-sans text-slate-400 block -mt-0.5">
               Practicum Dossier
             </span>
           </div>
