@@ -1,5 +1,5 @@
 /**
- * ClassMate Practicum - Main Application Controller (Full Customization & Edit Everywhere)
+ * ClassMate Practicum - Main Application Controller (Jeff Milanes High-Tech Dark Cinematic)
  */
 
 class AppController {
@@ -10,6 +10,12 @@ class AppController {
     this.activeModal = null;
     this.tempUploadImage = null;
 
+    // Audio System (Inspired by jeffmilanes.com interactive sound)
+    this.audioEnabled = false;
+    this.audioCtx = null;
+    this.ambientOsc = null;
+    this.ambientGain = null;
+
     document.addEventListener('DOMContentLoaded', () => {
       this.init();
     });
@@ -17,8 +23,9 @@ class AppController {
 
   // Initialize App
   init() {
-    this.applyTheme('light');
+    this.applyTheme(this.currentTheme);
     this.bindEvents();
+    this.initTypewriter();
     this.updateAuthUI();
 
     const urlParams = new URLSearchParams(window.location.search);
@@ -62,12 +69,146 @@ class AppController {
     if (themeIcon) {
       themeIcon.className = theme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
     }
+
+    const hudThemeIcon = document.getElementById('hud-theme-icon');
+    if (hudThemeIcon) {
+      hudThemeIcon.className = theme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+    }
   }
 
   toggleTheme() {
     const newTheme = this.currentTheme === 'dark' ? 'light' : 'dark';
     this.applyTheme(newTheme);
+    this.playTone(newTheme === 'dark' ? 440 : 660, 'sine', 0.1, 0.04);
     window.showToast(`เปลี่ยนเป็นโหมด ${newTheme === 'dark' ? 'มืด (Dark)' : 'สว่าง (Light)'} เรียบร้อย`, 'info');
+  }
+
+  // Typewriter Tagline Animation (Jeff Milanes Style)
+  initTypewriter() {
+    const el = document.getElementById('hero-typewriter-text');
+    if (!el) return;
+
+    const phrases = [
+      "I DESIGN ACTIVE LEARNING SYSTEMS.",
+      "I BUILD 21ST CENTURY CLASSROOMS.",
+      "I INTEGRATE AI & CODING INTO PEDAGOGY.",
+      "I EMPOWER FUTURE GENERATIONS."
+    ];
+    let phraseIndex = 0;
+    let charIndex = phrases[0].length;
+    let isDeleting = true;
+    let typingSpeed = 65;
+
+    const type = () => {
+      const current = phrases[phraseIndex];
+      if (isDeleting) {
+        el.textContent = current.substring(0, charIndex - 1);
+        charIndex--;
+        typingSpeed = 35;
+      } else {
+        el.textContent = current.substring(0, charIndex + 1);
+        charIndex++;
+        typingSpeed = 70;
+      }
+
+      if (!isDeleting && charIndex === current.length) {
+        typingSpeed = 2400; // Pause at end of sentence
+        isDeleting = true;
+      } else if (isDeleting && charIndex === 0) {
+        isDeleting = false;
+        phraseIndex = (phraseIndex + 1) % phrases.length;
+        typingSpeed = 400; // Pause before typing new sentence
+      }
+
+      setTimeout(type, typingSpeed);
+    };
+
+    setTimeout(type, 2000);
+  }
+
+  // Web Audio API Ambient Audio System & Micro-Interactions
+  toggleAudio() {
+    if (!this.audioCtx) {
+      try {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        this.audioCtx = new AudioContext();
+      } catch (e) {
+        console.warn('Web Audio API not supported', e);
+        return;
+      }
+    }
+
+    if (this.audioCtx.state === 'suspended') {
+      this.audioCtx.resume();
+    }
+
+    this.audioEnabled = !this.audioEnabled;
+    const btn = document.getElementById('ambient-sound-toggle');
+    const label = document.getElementById('audio-status-label');
+
+    if (this.audioEnabled) {
+      if (btn) btn.classList.add('active');
+      if (label) label.textContent = 'AUDIO: ON';
+      this.playTone(520, 'sine', 0.15, 0.08);
+      this.startAmbientHum();
+      window.showToast('เปิดเสียง Ambient Audio & Micro-Sound FX เรียบร้อย', 'info');
+    } else {
+      if (btn) btn.classList.remove('active');
+      if (label) label.textContent = 'AUDIO: OFF';
+      this.stopAmbientHum();
+      window.showToast('ปิดเสียง Audio FX เรียบร้อย', 'info');
+    }
+  }
+
+  startAmbientHum() {
+    if (!this.audioCtx || this.ambientOsc) return;
+    try {
+      const osc = this.audioCtx.createOscillator();
+      const gain = this.audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(55, this.audioCtx.currentTime); // Soft low-frequency ambient
+      gain.gain.setValueAtTime(0.0001, this.audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.012, this.audioCtx.currentTime + 2.5);
+      osc.connect(gain);
+      gain.connect(this.audioCtx.destination);
+      osc.start();
+      this.ambientOsc = osc;
+      this.ambientGain = gain;
+    } catch (e) {}
+  }
+
+  stopAmbientHum() {
+    if (this.ambientOsc && this.ambientGain && this.audioCtx) {
+      try {
+        this.ambientGain.gain.exponentialRampToValueAtTime(0.0001, this.audioCtx.currentTime + 0.6);
+        setTimeout(() => {
+          if (this.ambientOsc) {
+            this.ambientOsc.stop();
+            this.ambientOsc.disconnect();
+            this.ambientOsc = null;
+            this.ambientGain = null;
+          }
+        }, 650);
+      } catch (e) {
+        this.ambientOsc = null;
+      }
+    }
+  }
+
+  playTone(freq = 440, type = 'sine', duration = 0.1, maxGain = 0.04) {
+    if (!this.audioEnabled || !this.audioCtx) return;
+    try {
+      const osc = this.audioCtx.createOscillator();
+      const gain = this.audioCtx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, this.audioCtx.currentTime);
+      gain.gain.setValueAtTime(maxGain, this.audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, this.audioCtx.currentTime + duration);
+      osc.connect(gain);
+      gain.connect(this.audioCtx.destination);
+      osc.start();
+      osc.stop(this.audioCtx.currentTime + duration);
+    } catch (e) {}
   }
 
   // Bind UI Events
@@ -81,13 +222,19 @@ class AppController {
     // Public/Edit Mode toggle
     const modeBtn = document.getElementById('toggle-mode-btn');
     if (modeBtn) {
-      modeBtn.addEventListener('click', () => window.appShare.toggleMode());
+      modeBtn.addEventListener('click', () => {
+        this.playTone(480, 'sine', 0.08, 0.03);
+        window.appShare.toggleMode();
+      });
     }
 
     // Share button
     const shareBtn = document.getElementById('share-btn');
     if (shareBtn) {
-      shareBtn.addEventListener('click', () => window.appShare.openShareModal());
+      shareBtn.addEventListener('click', () => {
+        this.playTone(550, 'sine', 0.08, 0.03);
+        window.appShare.openShareModal();
+      });
     }
 
     // Tab buttons
@@ -119,6 +266,7 @@ class AppController {
             const success = window.appStorage.importJSON(event.target.result);
             if (success) {
               this.renderAll();
+              this.playTone(660, 'sine', 0.15, 0.05);
               window.showToast('นำเข้าข้อมูลสำเร็จและอัปเดตหน้าเว็บแล้ว!', 'success');
             } else {
               window.showToast('ไฟล์ JSON ไม่ถูกต้องหรือไม่ตรงรูปแบบ', 'error');
@@ -135,6 +283,8 @@ class AppController {
 
   // Tab switcher
   switchTab(tabId, clickedBtn) {
+    this.playTone(600, 'triangle', 0.06, 0.025);
+
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
 
@@ -148,6 +298,15 @@ class AppController {
     const targetPanel = document.getElementById(`tab-${tabId}`);
     if (targetPanel) {
       targetPanel.classList.add('active');
+
+      // Trigger Cyber FX text decode and rebind spotlight
+      if (window.cyberFX) {
+        window.cyberFX.initSpotlightTilt();
+        const sceneTitle = targetPanel.querySelector('.scene-title');
+        if (sceneTitle) {
+          window.cyberFX.scrambleElement(sceneTitle, sceneTitle.textContent, 550);
+        }
+      }
     }
   }
 
@@ -163,6 +322,11 @@ class AppController {
     this.renderTeachingLogs(data.teachingLogs || []);
     window.appGallery.renderGallery(data.gallery || []);
     this.renderStudentShowcases(data.studentShowcases || []);
+
+    if (window.cyberFX) {
+      window.cyberFX.animateCounters();
+      window.cyberFX.initSpotlightTilt();
+    }
   }
 
   // Render Student Profile & Hero Section
