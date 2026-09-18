@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { StudentProfile } from "@/types/practicum";
 import { toast } from "sonner";
 import { gdrive } from "@/lib/gdrive";
+import { compressImage } from "@/lib/imageCompressor";
 
 interface ProfileEditDialogProps {
   isOpen: boolean;
@@ -53,15 +54,15 @@ export const ProfileEditDialog: React.FC<ProfileEditDialogProps> = ({
         } catch (err) {
           toast.dismiss();
           toast.error("เกิดข้อผิดพลาดในการเชื่อมต่อ Google Drive");
-          const localUrl = await gdrive.readFileAsDataURL(file);
+          const localUrl = await compressImage(file, { maxWidth: 512, maxHeight: 512, quality: 0.8 });
           setAvatarPreview(localUrl);
           setFormData((prev) => ({ ...prev, avatar: localUrl }));
         }
       } else {
-        const localUrl = await gdrive.readFileAsDataURL(file);
+        const localUrl = await compressImage(file, { maxWidth: 512, maxHeight: 512, quality: 0.8 });
         setAvatarPreview(localUrl);
         setFormData((prev) => ({ ...prev, avatar: localUrl }));
-        toast.info("บันทึกรูปภาพในเครื่อง (สามารถเชื่อมต่อ Google Drive ได้ที่เมนู Cloud)");
+        toast.success("ปรับแต่งและบันทึกรูปโปรไฟล์เรียบร้อย");
       }
       setIsUploading(false);
     }

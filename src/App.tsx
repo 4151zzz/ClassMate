@@ -88,6 +88,7 @@ export function App() {
     saveTeachingLog,
     deleteTeachingLog,
     saveGalleryItem,
+    saveGalleryItems,
     deleteGalleryItem,
     saveShowcase,
     deleteShowcase,
@@ -502,6 +503,7 @@ export function App() {
         isOpen={galleryModalOpen}
         onClose={() => setGalleryModalOpen(false)}
         onSave={saveGalleryItem}
+        onSaveBatch={saveGalleryItems}
       />
 
       <ShowcaseDialog

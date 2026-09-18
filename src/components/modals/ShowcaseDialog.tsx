@@ -13,12 +13,13 @@ import { Input } from "@/components/ui/input";
 import { StudentShowcase } from "@/types/practicum";
 import { toast } from "sonner";
 import { gdrive } from "@/lib/gdrive";
+import { compressImage } from "@/lib/imageCompressor";
 
 interface ShowcaseDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  showcaseToEdit: StudentShowcase | null;
-  onSave: (sc: StudentShowcase) => void;
+  showcaseToEdit?: StudentShowcase | null;
+  onSave: (showcase: StudentShowcase) => void;
 }
 
 export const ShowcaseDialog: React.FC<ShowcaseDialogProps> = ({
@@ -65,13 +66,13 @@ export const ShowcaseDialog: React.FC<ShowcaseDialogProps> = ({
         } catch (err) {
           toast.dismiss();
           toast.error("เกิดข้อผิดพลาดในการเชื่อมต่อ Google Drive");
-          const localUrl = await gdrive.readFileAsDataURL(file);
+          const localUrl = await compressImage(file, { maxWidth: 1024, maxHeight: 1024, quality: 0.75 });
           setFormData((prev) => ({ ...prev, image: localUrl }));
         }
       } else {
-        const localUrl = await gdrive.readFileAsDataURL(file);
+        const localUrl = await compressImage(file, { maxWidth: 1024, maxHeight: 1024, quality: 0.75 });
         setFormData((prev) => ({ ...prev, image: localUrl }));
-        toast.info("บันทึกรูปภาพในเครื่อง (สามารถเชื่อมต่อ Google Drive ได้ที่เมนู Cloud)");
+        toast.success("บีบอัดและแนบรูปภาพผลงานเรียบร้อย");
       }
       setIsUploading(false);
     }

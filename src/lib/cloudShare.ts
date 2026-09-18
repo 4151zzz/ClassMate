@@ -128,6 +128,9 @@ export async function publishPortfolioToCloud(
     });
 
     if (!response.ok) {
+      if (response.status === 413) {
+        throw new Error("ขนาดข้อมูลรวมเกินขีดจำกัดคลาวด์ (แนะนำให้อัปโหลดรูปด้วยระบบบีบอัดใหม่)");
+      }
       throw new Error(`Cloud KV returned status ${response.status}`);
     }
 

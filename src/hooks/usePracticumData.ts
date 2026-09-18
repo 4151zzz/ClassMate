@@ -649,6 +649,15 @@ export function usePracticumData(
     toast.success("บันทึกภาพกิจกรรมแล้ว");
   }, []);
 
+  const saveGalleryItems = useCallback((items: GalleryItem[]) => {
+    if (!items || items.length === 0) return;
+    setData((prev) => ({
+      ...prev,
+      gallery: [...items, ...prev.gallery],
+    }));
+    toast.success(`เพิ่มภาพกิจกรรม ${items.length} รูปเรียบร้อย`);
+  }, []);
+
   const deleteGalleryItem = useCallback((id: string) => {
     setData((prev) => ({
       ...prev,
@@ -709,6 +718,7 @@ export function usePracticumData(
     saveTeachingLog,
     deleteTeachingLog,
     saveGalleryItem,
+    saveGalleryItems,
     deleteGalleryItem,
     saveShowcase,
     deleteShowcase,
