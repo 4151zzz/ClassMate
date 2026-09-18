@@ -28,7 +28,10 @@ import {
 
 const BASE_STORAGE_KEY = "classmate_practicum_portfolio_v2";
 
-export function usePracticumData(currentUser?: GoogleUser | null) {
+export function usePracticumData(
+  currentUser?: GoogleUser | null,
+  onUpdateUserProfile?: (name: string, picture?: string) => void
+) {
   const getStorageKey = (email?: string) => {
     return email
       ? `classmate_portfolio_${email.toLowerCase().trim()}`
@@ -60,6 +63,13 @@ export function usePracticumData(currentUser?: GoogleUser | null) {
       if (cached) return cached;
     }
 
+    // 1.5. If logged-in user, check if we have a cached version for this user's permanent UID
+    if (user?.email) {
+      const accountUid = getPermanentPortfolioUid(user.email);
+      const cached = getCachedPortfolio(accountUid);
+      if (cached) return cached;
+    }
+
     // 2. Try URL hash if shared offline
     try {
       const hash = window.location.hash.replace(/^#/, "");
@@ -80,24 +90,14 @@ export function usePracticumData(currentUser?: GoogleUser | null) {
       if (saved) {
         return JSON.parse(saved);
       }
-      // If logging in on this device and no saved data for this email yet, adopt guest data if any
-      if (user && key !== BASE_STORAGE_KEY) {
-        const guestSaved = localStorage.getItem(BASE_STORAGE_KEY);
-        if (guestSaved) {
-          const parsed = JSON.parse(guestSaved);
-          if (parsed && parsed.student && parsed.school) {
-            return parsed;
-          }
-        }
-      }
     } catch (e) {
       console.warn(`Failed to load data for key ${key}:`, e);
     }
 
     // 4. Fallback to default mock data (pre-filled with Google User info if logged in)
     if (user) {
-      const isPlainUsername = user.name && user.name === user.email.split("@")[0];
-      const displayName = !user.name || isPlainUsername ? DEFAULT_PRACTICUM_DATA.student.fullName : user.name;
+      const isPlainUsername = !user.name || user.name === user.email.split("@")[0];
+      const displayName = isPlainUsername ? "กำลังโหลดข้อมูล..." : user.name;
       return {
         ...DEFAULT_PRACTICUM_DATA,
         student: {
@@ -216,66 +216,69 @@ export function usePracticumData(currentUser?: GoogleUser | null) {
     const accountUid = getPermanentPortfolioUid(currentUser.email);
     const userStorageKey = getStorageKey(currentUser.email);
 
+    setIsLoadingCloudData(true);
+
     fetchPortfolioFromCloud(accountUid)
       .then((cloudResult) => {
         if (!isMounted) return;
 
-        const currentLocalStr = localStorage.getItem(userStorageKey);
-        const hasLocalCustomData = !!currentLocalStr;
-
         if (cloudResult && cloudResult.data && cloudResult.data.student) {
-          // Cloud has existing portfolio for this Google account!
-          let isLocalJustDefault = true;
+          // Cloud has existing portfolio for this Google account! Always load it!
+          setData(cloudResult.data);
+          saveCachedPortfolio(accountUid, cloudResult.data, cloudResult.updatedAt);
+          try {
+            localStorage.setItem(userStorageKey, JSON.stringify(cloudResult.data));
+          } catch (e) {
+            console.warn("Failed to cache cloud restored data:", e);
+          }
+
+          if (onUpdateUserProfile && cloudResult.data.student.fullName) {
+            onUpdateUserProfile(
+              cloudResult.data.student.fullName,
+              cloudResult.data.student.avatar
+            );
+          }
+
+          toast.success("ซิงก์ข้อมูลพอร์ตโฟลิโอของคุณแล้ว", {
+            description: `ยินดีต้อนรับ ${cloudResult.data.student.fullName} (ดึงข้อมูลจากคลาวด์เรียบร้อย)`,
+            duration: 4000,
+          });
+        } else {
+          // Cloud has no portfolio yet for this email, if this device has custom data, push it as initial
+          const currentLocalStr = localStorage.getItem(userStorageKey);
           if (currentLocalStr) {
             try {
-              const parsed = JSON.parse(currentLocalStr);
-              isLocalJustDefault =
-                !parsed.student?.studentId ||
-                parsed.student?.studentId === DEFAULT_PRACTICUM_DATA.student.studentId ||
-                parsed.student?.fullName === DEFAULT_PRACTICUM_DATA.student.fullName;
-            } catch {
-              isLocalJustDefault = true;
-            }
+              const localData = JSON.parse(currentLocalStr);
+              if (
+                localData?.student?.fullName &&
+                localData.student.fullName !== "กำลังโหลดข้อมูล..." &&
+                localData.student.fullName !== DEFAULT_PRACTICUM_DATA.student.fullName
+              ) {
+                publishPortfolioToCloud(localData, accountUid, currentUser.email);
+              }
+            } catch {}
           }
-
-          const localTime = getCachedUpdatedAt(accountUid);
-          const shouldAdoptCloud = !hasLocalCustomData || isLocalJustDefault || cloudResult.updatedAt > localTime;
-
-          if (shouldAdoptCloud) {
-            setData(cloudResult.data);
-            saveCachedPortfolio(accountUid, cloudResult.data, cloudResult.updatedAt);
-            try {
-              localStorage.setItem(userStorageKey, JSON.stringify(cloudResult.data));
-            } catch (e) {
-              console.warn("Failed to cache cloud restored data:", e);
-            }
-            toast.success("ซิงก์ข้อมูลพอร์ตโฟลิโอจากบัญชีของคุณแล้ว", {
-              description: `ดึงข้อมูลล่าสุดข้ามอุปกรณ์สำเร็จ (${cloudResult.data.student.fullName || currentUser.email})`,
-              duration: 4500,
-            });
-          }
-        } else if (hasLocalCustomData) {
-          // Cloud is empty, but this computer has local data: Publish to account cloud UID!
-          try {
-            const localData = JSON.parse(currentLocalStr);
-            publishPortfolioToCloud(localData, accountUid, currentUser.email);
-          } catch {}
         }
         isCloudRestoreCheckedRef.current = true;
       })
       .catch((err) => {
         console.warn("Cross-device cloud restore check failed:", err);
         isCloudRestoreCheckedRef.current = true;
+      })
+      .finally(() => {
+        if (isMounted) setIsLoadingCloudData(false);
       });
 
     return () => {
       isMounted = false;
     };
-  }, [currentUser?.email, sharedUid]);
+  }, [currentUser?.email, sharedUid, onUpdateUserProfile]);
 
   // Persist data on change into current user's isolated storage (only when not viewing someone else's shared UID)
   useEffect(() => {
     if (sharedUid) return; // Never overwrite local storage when viewing a shared link
+    if (data.student?.fullName === "กำลังโหลดข้อมูล...") return; // Don't persist temporary loading placeholder
+
     try {
       localStorage.setItem(activeKey, JSON.stringify(data));
     } catch (e) {
@@ -396,6 +399,11 @@ export function usePracticumData(currentUser?: GoogleUser | null) {
       return;
     }
 
+    // Never auto-sync temporary placeholder loading state
+    if (data.student?.fullName === "กำลังโหลดข้อมูล...") {
+      return;
+    }
+
     if (syncTimeoutRef.current) {
       clearTimeout(syncTimeoutRef.current);
     }
@@ -463,6 +471,9 @@ export function usePracticumData(currentUser?: GoogleUser | null) {
         if (targetEmail) {
           localStorage.setItem(getStorageKey(targetEmail), JSON.stringify(res.data));
         }
+        if (onUpdateUserProfile && res.data.student.fullName) {
+          onUpdateUserProfile(res.data.student.fullName, res.data.student.avatar);
+        }
         toast.success("ดึงข้อมูลพอร์ตโฟลิโอจากคลาวด์สำเร็จ!", {
           description: `พอร์ตของ ${res.data.student.fullName || targetEmail}`,
         });
@@ -476,7 +487,7 @@ export function usePracticumData(currentUser?: GoogleUser | null) {
       toast.error("ไม่สามารถเชื่อมต่อคลาวด์ได้");
       return false;
     }
-  }, [currentUser?.email, sharedUid, portfolioUid]);
+  }, [currentUser?.email, sharedUid, portfolioUid, onUpdateUserProfile]);
 
   // Synchronous share URL getter (Always returns permanent live URL for mode="short")
   const getShareUrl = useCallback(

@@ -53,7 +53,12 @@ import {
 } from "@/types/practicum";
 
 export function App() {
-  const { user: currentUser, login: loginWithGoogle, logout: logoutGoogle } = useGoogleAuth();
+  const {
+    user: currentUser,
+    login: loginWithGoogle,
+    logout: logoutGoogle,
+    updateUserProfile,
+  } = useGoogleAuth();
 
   const {
     data,
@@ -86,7 +91,7 @@ export function App() {
     deleteGalleryItem,
     saveShowcase,
     deleteShowcase,
-  } = usePracticumData(currentUser);
+  } = usePracticumData(currentUser, updateUserProfile);
 
   // Active Tab state
   const [activeTab, setActiveTab] = useState<string>("overview");

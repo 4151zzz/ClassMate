@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
+import { getPermanentPortfolioUid, getCachedPortfolio } from "@/lib/cloudShare";
 
 export interface GoogleUser {
   id: string;
@@ -46,10 +47,24 @@ export function useGoogleAuth() {
         return false;
       }
 
-      // Generate avatar fallback if none provided
-      const defaultName = userData.name || cleanEmail.split("@")[0];
+      // Check if we have cached portfolio for this email to get their real name and avatar immediately!
+      let knownName = userData.name;
+      let knownPicture = userData.picture;
+
+      if (!knownName) {
+        try {
+          const accountUid = getPermanentPortfolioUid(cleanEmail);
+          const cached = getCachedPortfolio(accountUid);
+          if (cached && cached.student?.fullName) {
+            knownName = cached.student.fullName;
+            knownPicture = cached.student.avatar || knownPicture;
+          }
+        } catch {}
+      }
+
+      const defaultName = knownName || cleanEmail.split("@")[0];
       const avatarUrl =
-        userData.picture ||
+        knownPicture ||
         `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(
           defaultName
         )}&backgroundColor=0284c7,0ea5e9,00f0ff`;
@@ -62,11 +77,27 @@ export function useGoogleAuth() {
       };
 
       setUser(newUser);
-      toast.success(`เข้าสู่ระบบด้วย Google สำเร็จ: ${cleanEmail}`);
+      toast.success(
+        knownName
+          ? `เข้าสู่ระบบสำเร็จ: ${knownName}`
+          : `เข้าสู่ระบบด้วย Gmail: ${cleanEmail}`
+      );
       return true;
     },
     []
   );
+
+  // Update user profile name and avatar from loaded portfolio
+  const updateUserProfile = useCallback((name: string, picture?: string) => {
+    setUser((prev) => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        name: name || prev.name,
+        picture: picture || prev.picture,
+      };
+    });
+  }, []);
 
   // Logout action
   const logout = useCallback(() => {
@@ -79,5 +110,6 @@ export function useGoogleAuth() {
     isAuthenticated,
     login,
     logout,
+    updateUserProfile,
   };
 }

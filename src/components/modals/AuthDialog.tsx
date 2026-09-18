@@ -28,16 +28,36 @@ export const AuthDialog: React.FC<AuthDialogProps> = ({
   onLogout,
 }) => {
   const [email, setEmail] = useState("");
-  const [name, setName] = useState("");
   const [isSwitching, setIsSwitching] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email) return;
-    const ok = onLogin({ email, name });
+  // Remember recently logged in emails for quick 1-click access
+  const recentEmails = React.useMemo(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const stored = localStorage.getItem("classmate_recent_emails");
+      const list = stored ? (JSON.parse(stored) as string[]) : [];
+      // Add defaults if empty
+      const combined = Array.from(new Set([...list, "0987654321wun@gmail.com", "admincream@gmail.com"]));
+      return combined.filter((e) => e && e.includes("@"));
+    } catch {
+      return ["0987654321wun@gmail.com"];
+    }
+  }, [isOpen]);
+
+  const handleSubmit = (e?: React.FormEvent, customEmail?: string) => {
+    if (e) e.preventDefault();
+    const targetEmail = (customEmail || email).trim().toLowerCase();
+    if (!targetEmail) return;
+
+    // Save to recent emails
+    try {
+      const updated = Array.from(new Set([targetEmail, ...recentEmails])).slice(0, 5);
+      localStorage.setItem("classmate_recent_emails", JSON.stringify(updated));
+    } catch {}
+
+    const ok = onLogin({ email: targetEmail });
     if (ok) {
       setEmail("");
-      setName("");
       setIsSwitching(false);
       onClose();
     }
@@ -45,7 +65,7 @@ export const AuthDialog: React.FC<AuthDialogProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md bg-[#0a0d14] border border-white/15 text-white">
+      <DialogContent className="max-w-md bg-[#0a0d14] border border-white/15 text-white shadow-2xl">
         <DialogHeader>
           <div className="mx-auto w-12 h-12 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center mb-2 shadow-[0_0_25px_rgba(255,255,255,0.15)]">
             {/* Google G Brand SVG */}
@@ -71,12 +91,12 @@ export const AuthDialog: React.FC<AuthDialogProps> = ({
           <DialogTitle className="text-center justify-center text-lg font-bold">
             {currentUser && !isSwitching
               ? "บัญชี Google ที่เข้าสู่ระบบอยู่"
-              : "เข้าสู่ระบบด้วย Google / Gmail"}
+              : "เข้าสู่ระบบด้วย Gmail"}
           </DialogTitle>
           <DialogDescription className="text-center text-xs text-slate-400">
             {currentUser && !isSwitching
               ? "จัดการสิทธิ์ความเป็นเจ้าของและพอร์ตโฟลิโอของคุณ"
-              : "ใช้บัญชี Gmail หรืออีเมลสถานศึกษา เพื่อแยกข้อมูลและปลดล็อกโหมดแก้ไข"}
+              : "ระบุอีเมล Gmail เพื่อเปิดและซิงก์ข้อมูลพอร์ตโฟลิโอของคุณอัตโนมัติ"}
           </DialogDescription>
         </DialogHeader>
 
@@ -107,7 +127,7 @@ export const AuthDialog: React.FC<AuthDialogProps> = ({
             <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-300 flex items-start gap-2.5">
               <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
               <span>
-                คุณมีสิทธิ์เข้าถึง <strong>โหมดแก้ไข (Editor Mode)</strong> ของพอร์ตโฟลิโอนี้อย่างสมบูรณ์
+                คุณมีสิทธิ์เข้าถึง <strong>โหมดแก้ไข (Editor Mode)</strong> และซิงก์ข้อมูลบนคลาวด์อย่างสมบูรณ์
               </span>
             </div>
 
@@ -134,46 +154,52 @@ export const AuthDialog: React.FC<AuthDialogProps> = ({
             </DialogFooter>
           </div>
         ) : (
-          /* Login Form */
-          <form onSubmit={handleSubmit} className="space-y-4 py-2">
+          /* Clean & Fast Login Form (Gmail Only) */
+          <form onSubmit={(e) => handleSubmit(e)} className="space-y-4 py-2">
             <div className="space-y-3">
               <div>
-                <label className="text-[11px] text-slate-400 mb-1 block font-medium">
-                  ที่อยู่อีเมล Gmail หรืออีเมลมหาวิทยาลัย <span className="text-cyan-400">*</span>
+                <label className="text-[11px] text-slate-300 mb-1.5 block font-semibold">
+                  กรอกอีเมล Gmail ของคุณ <span className="text-cyan-400">*</span>
                 </label>
                 <div className="relative">
-                  <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <Mail className="w-4 h-4 text-cyan-400 absolute left-3 top-1/2 -translate-y-1/2" />
                   <Input
                     type="email"
-                    placeholder="เช่น thanakrit.wi@edu.ssru.ac.th"
+                    placeholder="เช่น 0987654321wun@gmail.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="pl-9 text-xs bg-black/60 border-white/20 text-white placeholder:text-slate-600"
+                    className="pl-9 text-xs font-mono bg-black/60 border-cyan-500/40 text-cyan-100 placeholder:text-slate-600 focus:border-cyan-400"
                     required
                     autoFocus
                   />
                 </div>
               </div>
 
-              <div>
-                <label className="text-[11px] text-slate-400 mb-1 block font-medium">
-                  ชื่อ-นามสกุล ของเจ้าของบัญชี (ระบุหรือไม่ก็ได้)
-                </label>
-                <div className="relative">
-                  <UserIcon className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                  <Input
-                    type="text"
-                    placeholder="เช่น นายธนกฤต วิริยปัญญา"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="pl-9 text-xs bg-black/60 border-white/20 text-white placeholder:text-slate-600"
-                  />
+              {/* Quick Select Recent Email */}
+              {recentEmails.length > 0 && (
+                <div className="space-y-1 pt-1">
+                  <span className="text-[10px] text-slate-400 block">เข้าสู่ระบบด่วนด้วยบัญชีที่เคยใช้:</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {recentEmails.map((em) => (
+                      <button
+                        key={em}
+                        type="button"
+                        onClick={() => {
+                          setEmail(em);
+                          handleSubmit(undefined, em);
+                        }}
+                        className="text-[10px] font-mono px-2.5 py-1 rounded-lg bg-white/5 hover:bg-cyan-500/20 text-slate-300 hover:text-cyan-300 border border-white/10 hover:border-cyan-500/30 transition-colors"
+                      >
+                        {em}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
-              <p className="text-[11px] text-slate-400 leading-relaxed bg-white/[0.02] p-2.5 rounded-xl border border-white/5">
-                💡 <strong>ระบบแยกข้อมูลรายบุคคล:</strong> ข้อมูลแฟ้มสะสมงานของคุณจะถูกผูกเข้ากับอีเมลนี้โดยเฉพาะ บุคคลอื่นที่เปิดเว็บจะไม่เห็นหรือแก้ไขข้อมูลของคุณ
-              </p>
+              <div className="p-3 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-[11px] text-cyan-200 leading-relaxed">
+                ✨ <strong>ใส่แค่อีเมล Gmail:</strong> ระบบจะค้นหาและดึงข้อมูลแฟ้มสะสมงานของคุณทั้งหมดจากคลาวด์ลงมาให้อัตโนมัติทันที ไม่ต้องกรอกชื่อใหม่
+              </div>
             </div>
 
             <DialogFooter className="flex-row sm:justify-between gap-2 pt-2">
@@ -191,10 +217,10 @@ export const AuthDialog: React.FC<AuthDialogProps> = ({
               <Button
                 type="submit"
                 variant="default"
-                className="w-1/2 text-xs bg-cyan-500 hover:bg-cyan-400 text-black font-semibold gap-1.5"
+                className="w-1/2 text-xs bg-cyan-500 hover:bg-cyan-400 text-black font-semibold gap-1.5 shadow-[0_0_15px_rgba(0,240,255,0.25)]"
               >
                 <LogIn className="w-3.5 h-3.5 text-black" />
-                <span>เข้าสู่ระบบ</span>
+                <span>เข้าสู่ระบบ & ซิงก์ข้อมูล</span>
               </Button>
             </DialogFooter>
           </form>
