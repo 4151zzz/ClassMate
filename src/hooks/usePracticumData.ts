@@ -399,8 +399,12 @@ export function usePracticumData(
       return;
     }
 
-    // Never auto-sync temporary placeholder loading state
-    if (data.student?.fullName === "กำลังโหลดข้อมูล...") {
+    // Never auto-sync default mock template or placeholder loading state to cloud
+    if (
+      !data.student?.fullName ||
+      data.student.fullName === DEFAULT_PRACTICUM_DATA.student.fullName ||
+      data.student.fullName === "กำลังโหลดข้อมูล..."
+    ) {
       return;
     }
 
