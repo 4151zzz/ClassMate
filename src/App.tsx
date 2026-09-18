@@ -66,6 +66,7 @@ export function App() {
     publishedUid,
     portfolioUid,
     publishShareUrl,
+    restoreFromCloud,
     isPublishing,
     syncStatus,
     isViewingShared,
@@ -429,6 +430,7 @@ export function App() {
         onExportJSON={exportJSON}
         studentId={data.student.studentId}
         portfolioData={data}
+        onRestoreFromCloud={restoreFromCloud}
       />
 
       <ProfileEditDialog

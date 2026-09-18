@@ -33,6 +33,7 @@ interface CloudSyncDialogProps {
   onExportJSON: () => void;
   studentId?: string;
   portfolioData?: any;
+  onRestoreFromCloud?: () => Promise<boolean>;
 }
 
 export const CloudSyncDialog: React.FC<CloudSyncDialogProps> = ({
@@ -41,6 +42,7 @@ export const CloudSyncDialog: React.FC<CloudSyncDialogProps> = ({
   onExportJSON,
   studentId = "default",
   portfolioData,
+  onRestoreFromCloud,
 }) => {
   const [scriptUrl, setScriptUrl] = useState("");
   const [isConfigured, setIsConfigured] = useState(false);
@@ -129,6 +131,35 @@ export const CloudSyncDialog: React.FC<CloudSyncDialogProps> = ({
         </DialogHeader>
 
         <div className="space-y-4 py-2 text-xs">
+          {/* Multi-Device Cloud Sync & Restore Section */}
+          <div className="p-3.5 rounded-xl bg-cyan-500/10 border border-cyan-500/30 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 font-semibold text-cyan-300">
+                <Cloud className="w-4 h-4 text-cyan-400" />
+                <span>ซิงก์ข้อมูลข้ามเครื่อง (Multi-Device Cloud Sync)</span>
+              </div>
+              <Badge variant="outline" className="border-cyan-400/50 text-cyan-300 text-[10px]">
+                Real-Time Live
+              </Badge>
+            </div>
+            <p className="text-slate-300 text-[11px] leading-relaxed">
+              หากคุณเข้าสู่ระบบจากคอมพิวเตอร์หรือโทรศัพท์เครื่องอื่น สามารถกดปุ่มด้านล่างเพื่อดึงข้อมูลพอร์ตล่าสุดจากบัญชีนี้ลงมาแสดงผลได้ทันที
+            </p>
+            {onRestoreFromCloud && (
+              <Button
+                variant="default"
+                size="sm"
+                onClick={async () => {
+                  await onRestoreFromCloud();
+                }}
+                className="w-full text-xs gap-1.5 bg-cyan-500 hover:bg-cyan-400 text-black font-semibold shadow-[0_0_15px_rgba(0,240,255,0.25)]"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>ดึงข้อมูลพอร์ตโฟลิโอล่าสุดจากคลาวด์เดี๋ยวนี้ (Pull from Cloud)</span>
+              </Button>
+            )}
+          </div>
+
           {/* Status Badge */}
           <div
             className={`p-3.5 rounded-xl border flex items-start gap-3 transition-colors ${

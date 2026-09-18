@@ -225,8 +225,21 @@ export function usePracticumData(currentUser?: GoogleUser | null) {
 
         if (cloudResult && cloudResult.data && cloudResult.data.student) {
           // Cloud has existing portfolio for this Google account!
+          let isLocalJustDefault = true;
+          if (currentLocalStr) {
+            try {
+              const parsed = JSON.parse(currentLocalStr);
+              isLocalJustDefault =
+                !parsed.student?.studentId ||
+                parsed.student?.studentId === DEFAULT_PRACTICUM_DATA.student.studentId ||
+                parsed.student?.fullName === DEFAULT_PRACTICUM_DATA.student.fullName;
+            } catch {
+              isLocalJustDefault = true;
+            }
+          }
+
           const localTime = getCachedUpdatedAt(accountUid);
-          const shouldAdoptCloud = !hasLocalCustomData || cloudResult.updatedAt > localTime;
+          const shouldAdoptCloud = !hasLocalCustomData || isLocalJustDefault || cloudResult.updatedAt > localTime;
 
           if (shouldAdoptCloud) {
             setData(cloudResult.data);
@@ -237,8 +250,8 @@ export function usePracticumData(currentUser?: GoogleUser | null) {
               console.warn("Failed to cache cloud restored data:", e);
             }
             toast.success("ซิงก์ข้อมูลพอร์ตโฟลิโอจากบัญชีของคุณแล้ว", {
-              description: `ดึงข้อมูลล่าสุดข้ามอุปกรณ์สำเร็จ (${currentUser.email})`,
-              duration: 4000,
+              description: `ดึงข้อมูลล่าสุดข้ามอุปกรณ์สำเร็จ (${cloudResult.data.student.fullName || currentUser.email})`,
+              duration: 4500,
             });
           }
         } else if (hasLocalCustomData) {
@@ -432,6 +445,38 @@ export function usePracticumData(currentUser?: GoogleUser | null) {
       setIsPublishing(false);
     }
   }, [data, portfolioUid, currentUser?.email]);
+
+  // Manual Force Restore from Cloud for this account
+  const restoreFromCloud = useCallback(async (): Promise<boolean> => {
+    const targetEmail = currentUser?.email;
+    const targetUid = targetEmail
+      ? getPermanentPortfolioUid(targetEmail)
+      : sharedUid || portfolioUid;
+
+    toast.loading("กำลังดึงข้อมูลล่าสุดจากคลาวด์...");
+    try {
+      const res = await fetchPortfolioFromCloud(targetUid);
+      toast.dismiss();
+      if (res && res.data && res.data.student) {
+        setData(res.data);
+        saveCachedPortfolio(targetUid, res.data, res.updatedAt);
+        if (targetEmail) {
+          localStorage.setItem(getStorageKey(targetEmail), JSON.stringify(res.data));
+        }
+        toast.success("ดึงข้อมูลพอร์ตโฟลิโอจากคลาวด์สำเร็จ!", {
+          description: `พอร์ตของ ${res.data.student.fullName || targetEmail}`,
+        });
+        return true;
+      } else {
+        toast.error("ยังไม่พบข้อมูลที่บันทึกไว้บนคลาวด์สำหรับบัญชีนี้");
+        return false;
+      }
+    } catch (err) {
+      toast.dismiss();
+      toast.error("ไม่สามารถเชื่อมต่อคลาวด์ได้");
+      return false;
+    }
+  }, [currentUser?.email, sharedUid, portfolioUid]);
 
   // Synchronous share URL getter (Always returns permanent live URL for mode="short")
   const getShareUrl = useCallback(
@@ -631,6 +676,7 @@ export function usePracticumData(currentUser?: GoogleUser | null) {
     publishedUid: portfolioUid,
     portfolioUid,
     publishShareUrl,
+    restoreFromCloud,
     isPublishing,
     syncStatus,
     lastSyncedAt,
