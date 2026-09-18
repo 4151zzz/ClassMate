@@ -20,6 +20,8 @@ import {
   fetchPortfolioFromCloud,
   checkRemotePortfolioUpdate,
   getCachedPortfolio,
+  saveCachedPortfolio,
+  getCachedUpdatedAt,
   getPermanentPortfolioUid,
   setPermanentPortfolioUid,
 } from "@/lib/cloudShare";
@@ -77,6 +79,16 @@ export function usePracticumData(currentUser?: GoogleUser | null) {
       const saved = localStorage.getItem(key);
       if (saved) {
         return JSON.parse(saved);
+      }
+      // If logging in on this device and no saved data for this email yet, adopt guest data if any
+      if (user && key !== BASE_STORAGE_KEY) {
+        const guestSaved = localStorage.getItem(BASE_STORAGE_KEY);
+        if (guestSaved) {
+          const parsed = JSON.parse(guestSaved);
+          if (parsed && parsed.student && parsed.school) {
+            return parsed;
+          }
+        }
       }
     } catch (e) {
       console.warn(`Failed to load data for key ${key}:`, e);
@@ -174,6 +186,7 @@ export function usePracticumData(currentUser?: GoogleUser | null) {
 
   // Track previous user to detect account changes
   const prevUserEmailRef = useRef<string | undefined>(currentUser?.email);
+  const isCloudRestoreCheckedRef = useRef<boolean>(false);
 
   useEffect(() => {
     // Do not overwrite if viewing someone else's shared link
@@ -182,6 +195,7 @@ export function usePracticumData(currentUser?: GoogleUser | null) {
     const currentEmail = currentUser?.email;
     if (currentEmail !== prevUserEmailRef.current) {
       prevUserEmailRef.current = currentEmail;
+      isCloudRestoreCheckedRef.current = false;
       const newKey = getStorageKey(currentEmail);
       const loaded = loadDataForKey(newKey, currentUser);
       setData(loaded);
@@ -189,6 +203,62 @@ export function usePracticumData(currentUser?: GoogleUser | null) {
       setIsEditMode(!!currentUser);
     }
   }, [currentUser, sharedUid]);
+
+  // Cross-Device Account Cloud Sync:
+  // When logging in on another computer / device, fetch the user's existing portfolio from cloud
+  useEffect(() => {
+    if (sharedUid || !currentUser?.email) {
+      isCloudRestoreCheckedRef.current = true;
+      return;
+    }
+
+    let isMounted = true;
+    const accountUid = getPermanentPortfolioUid(currentUser.email);
+    const userStorageKey = getStorageKey(currentUser.email);
+
+    fetchPortfolioFromCloud(accountUid)
+      .then((cloudResult) => {
+        if (!isMounted) return;
+
+        const currentLocalStr = localStorage.getItem(userStorageKey);
+        const hasLocalCustomData = !!currentLocalStr;
+
+        if (cloudResult && cloudResult.data && cloudResult.data.student) {
+          // Cloud has existing portfolio for this Google account!
+          const localTime = getCachedUpdatedAt(accountUid);
+          const shouldAdoptCloud = !hasLocalCustomData || cloudResult.updatedAt > localTime;
+
+          if (shouldAdoptCloud) {
+            setData(cloudResult.data);
+            saveCachedPortfolio(accountUid, cloudResult.data, cloudResult.updatedAt);
+            try {
+              localStorage.setItem(userStorageKey, JSON.stringify(cloudResult.data));
+            } catch (e) {
+              console.warn("Failed to cache cloud restored data:", e);
+            }
+            toast.success("ซิงก์ข้อมูลพอร์ตโฟลิโอจากบัญชีของคุณแล้ว", {
+              description: `ดึงข้อมูลล่าสุดข้ามอุปกรณ์สำเร็จ (${currentUser.email})`,
+              duration: 4000,
+            });
+          }
+        } else if (hasLocalCustomData) {
+          // Cloud is empty, but this computer has local data: Publish to account cloud UID!
+          try {
+            const localData = JSON.parse(currentLocalStr);
+            publishPortfolioToCloud(localData, accountUid, currentUser.email);
+          } catch {}
+        }
+        isCloudRestoreCheckedRef.current = true;
+      })
+      .catch((err) => {
+        console.warn("Cross-device cloud restore check failed:", err);
+        isCloudRestoreCheckedRef.current = true;
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [currentUser?.email, sharedUid]);
 
   // Persist data on change into current user's isolated storage (only when not viewing someone else's shared UID)
   useEffect(() => {
@@ -305,6 +375,11 @@ export function usePracticumData(currentUser?: GoogleUser | null) {
     // Skip the very first initial mount
     if (isFirstMountRef.current) {
       isFirstMountRef.current = false;
+      return;
+    }
+
+    // If logged in, wait until cloud check has completed to prevent overwriting cloud with default data
+    if (currentUser?.email && !isCloudRestoreCheckedRef.current) {
       return;
     }
 

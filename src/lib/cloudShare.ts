@@ -36,16 +36,33 @@ export function generatePortfolioUid(): string {
 }
 
 /**
- * Get or create permanent UID for the portfolio (stored in localStorage)
+ * Deterministic permanent UID derived from email so that all devices
+ * logging into the same account share the EXACT same cloud portfolio.
+ */
+export function getEmailDeterministicUid(email: string): string {
+  const clean = (email || "").toLowerCase().trim();
+  let hash = 0;
+  for (let i = 0; i < clean.length; i++) {
+    hash = ((hash << 5) - hash) + clean.charCodeAt(i);
+    hash |= 0;
+  }
+  const hashStr = Math.abs(hash).toString(36);
+  const prefix = clean.split("@")[0].replace(/[^a-z0-9]/g, "").substring(0, 8);
+  return `u_${prefix || "user"}_${hashStr}`;
+}
+
+/**
+ * Get or create permanent UID for the portfolio.
+ * For authenticated accounts, this returns a deterministic UID across all devices.
  */
 export function getPermanentPortfolioUid(email?: string): string {
+  if (email && email.includes("@")) {
+    return getEmailDeterministicUid(email);
+  }
+
   if (typeof window === "undefined") return generatePortfolioUid();
 
-  const key = email
-    ? `${PERMANENT_UID_KEY}_${email.toLowerCase().trim()}`
-    : PERMANENT_UID_KEY;
-
-  let existing = localStorage.getItem(key);
+  let existing = localStorage.getItem(PERMANENT_UID_KEY);
   if (!existing) {
     // Check if there was a previous published UID we can adopt
     const lastPublished = localStorage.getItem("classmate_last_published_uid");
@@ -54,7 +71,6 @@ export function getPermanentPortfolioUid(email?: string): string {
     } else {
       existing = generatePortfolioUid();
     }
-    localStorage.setItem(key, existing);
     localStorage.setItem(PERMANENT_UID_KEY, existing);
   }
 
@@ -69,11 +85,10 @@ export function setPermanentPortfolioUid(uid: string, email?: string): void {
   const cleanUid = (uid || "").trim();
   if (!cleanUid) return;
 
-  const key = email
-    ? `${PERMANENT_UID_KEY}_${email.toLowerCase().trim()}`
-    : PERMANENT_UID_KEY;
-
-  localStorage.setItem(key, cleanUid);
+  if (email && email.includes("@")) {
+    const key = `${PERMANENT_UID_KEY}_${email.toLowerCase().trim()}`;
+    localStorage.setItem(key, cleanUid);
+  }
   localStorage.setItem(PERMANENT_UID_KEY, cleanUid);
 }
 
