@@ -18,7 +18,10 @@ import { GoogleUser } from "@/hooks/useGoogleAuth";
 import {
   publishPortfolioToCloud,
   fetchPortfolioFromCloud,
+  checkRemotePortfolioUpdate,
   getCachedPortfolio,
+  getPermanentPortfolioUid,
+  setPermanentPortfolioUid,
 } from "@/lib/cloudShare";
 
 const BASE_STORAGE_KEY = "classmate_practicum_portfolio_v2";
@@ -109,20 +112,22 @@ export function usePracticumData(currentUser?: GoogleUser | null) {
 
   const [isLoadingCloudData, setIsLoadingCloudData] = useState<boolean>(false);
 
-  // Fetch shared portfolio from cloud if UID is in URL
+  // Fetch shared portfolio from cloud if UID is in URL + Live Polling for real-time updates
   useEffect(() => {
     if (!sharedUid) return;
 
     let isMounted = true;
+    let lastUpdatedAt = 0;
     setIsLoadingCloudData(true);
 
     fetchPortfolioFromCloud(sharedUid)
-      .then((remoteData) => {
-        if (isMounted && remoteData) {
-          setData(remoteData);
+      .then((result) => {
+        if (isMounted && result) {
+          setData(result.data);
+          lastUpdatedAt = result.updatedAt;
           setIsEditMode(false);
-          toast.info(`กำลังแสดงพอร์ตโฟลิโอของ: ${remoteData.student?.fullName || "ผู้ปฏิบัติการสอน"}`, {
-            description: "โหมดผู้เข้าชม (Viewer Mode)",
+          toast.info(`กำลังแสดงพอร์ตโฟลิโอของ: ${result.data.student?.fullName || "ผู้ปฏิบัติการสอน"}`, {
+            description: "โหมดผู้เข้าชม (Viewer Mode) • ซิงก์เรียลไทม์สด",
             duration: 4000,
           });
         }
@@ -134,8 +139,36 @@ export function usePracticumData(currentUser?: GoogleUser | null) {
         if (isMounted) setIsLoadingCloudData(false);
       });
 
+    // Real-Time Live Polling: Check if student has published updates while viewing
+    const checkUpdate = async () => {
+      if (!isMounted || document.hidden) return;
+      try {
+        const update = await checkRemotePortfolioUpdate(sharedUid, lastUpdatedAt);
+        if (isMounted && update && update.updatedAt > lastUpdatedAt) {
+          lastUpdatedAt = update.updatedAt;
+          setData(update.data);
+          toast.success("ข้อมูลพอร์ตโฟลิโอมีการอัปเดตล่าสุดแบบเรียลไทม์", {
+            description: `ซิงก์เมื่อ: ${new Date(update.updatedAt).toLocaleTimeString("th-TH")}`,
+            duration: 3500,
+          });
+        }
+      } catch {
+        // silent polling
+      }
+    };
+
+    const intervalId = setInterval(checkUpdate, 6000);
+    const onVisibilityChange = () => {
+      if (!document.hidden) checkUpdate();
+    };
+    window.addEventListener("focus", onVisibilityChange);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
     return () => {
       isMounted = false;
+      clearInterval(intervalId);
+      window.removeEventListener("focus", onVisibilityChange);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
     };
   }, [sharedUid]);
 
@@ -246,51 +279,92 @@ export function usePracticumData(currentUser?: GoogleUser | null) {
     reader.readAsText(file);
   }, []);
 
-  // Published Cloud UID for lightweight sharing
-  const [publishedUid, setPublishedUid] = useState<string>(() => {
-    return typeof window !== "undefined"
-      ? localStorage.getItem("classmate_last_published_uid") || ""
-      : "";
+  // Permanent Portfolio UID for consistent live sharing
+  const [portfolioUid, setPortfolioUid] = useState<string>(() => {
+    return getPermanentPortfolioUid(currentUser?.email);
   });
-  const [isPublishing, setIsPublishing] = useState<boolean>(false);
 
-  // Publish to Cloud to get lightweight share URL
+  // Keep portfolioUid aligned when user account changes
+  useEffect(() => {
+    if (sharedUid) return;
+    const uid = getPermanentPortfolioUid(currentUser?.email);
+    setPortfolioUid(uid);
+  }, [currentUser?.email, sharedUid]);
+
+  // Real-time Cloud Sync Status
+  const [syncStatus, setSyncStatus] = useState<"idle" | "syncing" | "synced" | "error">("idle");
+  const [lastSyncedAt, setLastSyncedAt] = useState<number>(0);
+  const [isPublishing, setIsPublishing] = useState<boolean>(false);
+  const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isFirstMountRef = useRef<boolean>(true);
+
+  // Background Auto-Sync to Cloud whenever data changes (Debounced ~1200ms)
+  useEffect(() => {
+    if (sharedUid) return; // Do not auto-sync if viewing someone else's shared link
+
+    // Skip the very first initial mount
+    if (isFirstMountRef.current) {
+      isFirstMountRef.current = false;
+      return;
+    }
+
+    if (syncTimeoutRef.current) {
+      clearTimeout(syncTimeoutRef.current);
+    }
+
+    setSyncStatus("syncing");
+
+    syncTimeoutRef.current = setTimeout(async () => {
+      try {
+        const res = await publishPortfolioToCloud(data, portfolioUid, currentUser?.email);
+        setLastSyncedAt(res.updatedAt);
+        setSyncStatus("synced");
+      } catch (err) {
+        console.warn("Auto-sync to cloud failed:", err);
+        setSyncStatus("error");
+      }
+    }, 1200);
+
+    return () => {
+      if (syncTimeoutRef.current) {
+        clearTimeout(syncTimeoutRef.current);
+      }
+    };
+  }, [data, portfolioUid, sharedUid, currentUser?.email]);
+
+  // Force publish to Cloud immediately (called from ShareDialog or Force Sync button)
   const publishShareUrl = useCallback(async (): Promise<string> => {
     setIsPublishing(true);
+    setSyncStatus("syncing");
     try {
-      const uid = await publishPortfolioToCloud(data);
-      setPublishedUid(uid);
-      if (typeof window !== "undefined") {
-        localStorage.setItem("classmate_last_published_uid", uid);
-      }
+      const res = await publishPortfolioToCloud(data, portfolioUid, currentUser?.email);
+      setLastSyncedAt(res.updatedAt);
+      setSyncStatus("synced");
+      setPermanentPortfolioUid(res.uid, currentUser?.email);
+
       const baseUrl = window.location.origin + window.location.pathname;
-      const shareUrl = `${baseUrl}?u=${uid}`;
-      toast.success("สร้างลิงก์แชร์สั้นผ่านคลาวด์เรียบร้อยแล้ว", {
-        description: `UID: ${uid}`,
+      const shareUrl = `${baseUrl}?u=${res.uid}`;
+      toast.success("ซิงก์ข้อมูลพอร์ตโฟลิโอขึ้นลิงก์แชร์เรียบร้อยแล้ว", {
+        description: `ลิงก์เดิมถาวร: ?u=${res.uid} (อัปเดตเรียลไทม์)`,
       });
       return shareUrl;
     } catch (err) {
       console.warn("Failed to publish to cloud:", err);
-      toast.error("ไม่สามารถเชื่อมต่อคลาวด์เพื่อสร้างลิงก์สั้นได้");
+      setSyncStatus("error");
+      toast.error("ไม่สามารถเชื่อมต่อคลาวด์ได้ในขณะนี้");
       throw err;
     } finally {
       setIsPublishing(false);
     }
-  }, [data]);
+  }, [data, portfolioUid, currentUser?.email]);
 
-  // Synchronous share URL getter
+  // Synchronous share URL getter (Always returns permanent live URL for mode="short")
   const getShareUrl = useCallback(
     (mode: "short" | "hash" = "short") => {
       const baseUrl = window.location.origin + window.location.pathname;
 
       if (mode === "short") {
-        if (publishedUid) {
-          return `${baseUrl}?u=${publishedUid}`;
-        }
-        if (data.student.studentId) {
-          return `${baseUrl}?id=${encodeURIComponent(data.student.studentId)}`;
-        }
-        return baseUrl;
+        return `${baseUrl}?u=${portfolioUid}`;
       }
 
       // Hash mode (offline full data backup)
@@ -310,7 +384,7 @@ export function usePracticumData(currentUser?: GoogleUser | null) {
         return baseUrl;
       }
     },
-    [data, publishedUid]
+    [data, portfolioUid]
   );
 
   // CRUD Actions
@@ -478,9 +552,12 @@ export function usePracticumData(currentUser?: GoogleUser | null) {
     exportJSON,
     importJSON,
     getShareUrl,
-    publishedUid,
+    publishedUid: portfolioUid,
+    portfolioUid,
     publishShareUrl,
     isPublishing,
+    syncStatus,
+    lastSyncedAt,
     isViewingShared,
     isLoadingCloudData,
     updateStudent,

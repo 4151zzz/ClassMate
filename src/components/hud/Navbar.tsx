@@ -10,6 +10,8 @@ import {
   Cloud,
   User,
   LogOut,
+  RefreshCw,
+  Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +21,8 @@ import { GoogleUser } from "@/hooks/useGoogleAuth";
 interface NavbarProps {
   currentUser: GoogleUser | null;
   isEditMode: boolean;
+  syncStatus?: "idle" | "syncing" | "synced" | "error";
+  isViewingShared?: boolean;
   onOpenAuthDialog: () => void;
   onToggleViewerMode: () => void;
   onOpenShareDialog: () => void;
@@ -31,6 +35,8 @@ interface NavbarProps {
 export const Navbar: React.FC<NavbarProps> = ({
   currentUser,
   isEditMode,
+  syncStatus = "idle",
+  isViewingShared = false,
   onOpenAuthDialog,
   onToggleViewerMode,
   onOpenShareDialog,
@@ -141,6 +147,38 @@ export const Navbar: React.FC<NavbarProps> = ({
               <span className="hidden sm:inline">เข้าสู่ระบบ Google</span>
               <span className="sm:hidden">เข้าสู่ระบบ</span>
             </MagneticButton>
+          )}
+
+          {/* Real-time Cloud Sync Status Pill */}
+          {isViewingShared ? (
+            <div
+              className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-[11px] text-cyan-300 shadow-[0_0_10px_rgba(0,240,255,0.15)]"
+              title="กำลังเปิดดูข้อมูลสดจากคลาวด์ มีการซิงก์ข้อมูลอัตโนมัติ"
+            >
+              <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+              <span>Live Real-Time</span>
+            </div>
+          ) : (
+            <>
+              {syncStatus === "syncing" && (
+                <div
+                  className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-[11px] text-cyan-300 animate-pulse"
+                  title="กำลังซิงก์ข้อมูลขึ้นลิงก์แชร์เดิมอัตโนมัติ"
+                >
+                  <RefreshCw className="w-3 h-3 animate-spin text-cyan-400" />
+                  <span>กำลังซิงก์สด...</span>
+                </div>
+              )}
+              {syncStatus === "synced" && (
+                <div
+                  className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-[11px] text-emerald-300"
+                  title="ข้อมูลพอร์ตโฟลิโอถูกซิงก์ไปยังลิงก์แชร์เดิมเรียบร้อยแล้ว"
+                >
+                  <Check className="w-3 h-3 text-emerald-400" />
+                  <span>ซิงก์เรียลไทม์แล้ว</span>
+                </div>
+              )}
+            </>
           )}
 
           {/* Share Portfolio */}

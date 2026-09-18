@@ -64,8 +64,10 @@ export function App() {
     importJSON,
     getShareUrl,
     publishedUid,
+    portfolioUid,
     publishShareUrl,
     isPublishing,
+    syncStatus,
     isViewingShared,
     isLoadingCloudData,
     updateStudent,
@@ -177,6 +179,8 @@ export function App() {
           <Navbar
             currentUser={currentUser}
             isEditMode={isEditMode}
+            syncStatus={syncStatus}
+            isViewingShared={isViewingShared}
             onOpenAuthDialog={() => setAuthOpen(true)}
             onToggleViewerMode={() => toggleEditMode(false)}
             onOpenShareDialog={() => setShareOpen(true)}

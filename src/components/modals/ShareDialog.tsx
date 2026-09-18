@@ -148,7 +148,7 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
       setCopied(true);
       toast.success(
         shareMode === "uid"
-          ? "คัดลอกลิงก์สั้น Cloud UID เรียบร้อยแล้ว (ส่งลง LINE/FB ได้ทันที)"
+          ? "คัดลอกลิงก์สดถาวรเรียบร้อยแล้ว (ส่งลิงก์เดิมนี้ได้ตลอด ข้อมูลอัปเดตเรียลไทม์)"
           : "คัดลอกลิงก์ข้อมูลพกพาออฟไลน์เรียบร้อยแล้ว"
       );
       setTimeout(() => setCopied(false), 2500);
@@ -165,7 +165,7 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
             <Share2 className="w-6 h-6" />
           </div>
           <DialogTitle className="text-center justify-center text-lg font-bold">
-            แชร์พอร์ตโฟลิโอการปฏิบัติการสอน
+            แชร์พอร์ตโฟลิโอ (Live Permanent Link)
           </DialogTitle>
           <DialogDescription className="text-center text-xs text-slate-400">
             {studentName ? `พอร์ตโฟลิโอของ ${studentName}` : "ส่งให้อาจารย์นิเทศก์หรือคณะกรรมการประเมิน"}
@@ -184,14 +184,14 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
               className="text-xs data-[state=active]:bg-cyan-500 data-[state=active]:text-black font-semibold gap-1.5 transition-all"
             >
               <Zap className="w-3.5 h-3.5" />
-              <span>ลิงก์สั้น Cloud UID</span>
+              <span>ลิงก์สดถาวร (Real-Time)</span>
             </TabsTrigger>
             <TabsTrigger
               value="hash"
               className="text-xs data-[state=active]:bg-white/15 data-[state=active]:text-white gap-1.5 transition-all"
             >
               <HardDrive className="w-3.5 h-3.5" />
-              <span>ลิงก์ข้อมูลพกพา</span>
+              <span>สำรองข้อมูลในลิงก์</span>
             </TabsTrigger>
           </TabsList>
 
@@ -217,12 +217,17 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
                 </QRErrorBoundary>
               </div>
 
-              {/* Status Badge */}
-              <div className="flex items-center gap-2 text-[11px] text-cyan-300 bg-cyan-500/10 border border-cyan-500/30 px-3 py-1 rounded-full">
-                <Cloud className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
-                <span>ลิงก์สั้นผ่าน Cloud UID พร้อมเปิดได้ทุกอุปกรณ์</span>
+              {/* Real-Time Live Status Badge */}
+              <div className="flex items-center gap-2 text-[11px] text-cyan-300 bg-cyan-500/10 border border-cyan-500/30 px-3.5 py-1.5 rounded-full">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+                <span>ลิงก์เดิมถาวร • อัปเดตข้อมูล Real-Time อัตโนมัติ</span>
                 {syncing && <RefreshCw className="w-3 h-3 animate-spin ml-1 text-cyan-400" />}
               </div>
+
+              <p className="text-[11px] text-center text-slate-400 leading-relaxed px-2">
+                ส่งลิงก์หรือ QR Code นี้ให้อาจารย์ได้ทันที เมื่อคุณแก้ไขพอร์ต ข้อมูลจะอัปเดตให้อาจารย์เห็นอัตโนมัติ{" "}
+                <strong className="text-cyan-300">ไม่ต้องกดแชร์ใหม่อีกรอบ!</strong>
+              </p>
 
               {/* Copy Link Input */}
               <div className="w-full flex items-center gap-2">
@@ -245,24 +250,24 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
                   ) : (
                     <>
                       <Copy className="w-3.5 h-3.5" />
-                      <span>คัดลอก</span>
+                      <span>คัดลอกลิงก์</span>
                     </>
                   )}
                 </Button>
               </div>
 
-              {/* Sync latest button */}
+              {/* Force Sync button */}
               {publishShareUrl && (
-                <div className="w-full flex justify-between items-center text-[11px] text-slate-400 px-1">
-                  <span>ความยาวลิงก์: <strong>{(cloudUrl || activeShareUrl).length} ตัวอักษร</strong></span>
+                <div className="w-full flex justify-between items-center text-[11px] text-slate-400 px-1 pt-1">
+                  <span>ความยาว: <strong>{(cloudUrl || activeShareUrl).length} ตัวอักษร</strong></span>
                   <button
                     type="button"
                     onClick={handleReSyncCloud}
                     disabled={syncing || isPublishing}
-                    className="flex items-center gap-1 text-cyan-400 hover:text-cyan-300 transition-colors disabled:opacity-50"
+                    className="flex items-center gap-1.5 text-cyan-400 hover:text-cyan-300 transition-colors disabled:opacity-50 font-medium"
                   >
                     <RefreshCw className={`w-3 h-3 ${syncing ? "animate-spin" : ""}`} />
-                    <span>{syncing ? "กำลังอัปเดต..." : "อัปเดตข้อมูลล่าสุดลงลิงก์"}</span>
+                    <span>{syncing ? "กำลังซิงก์..." : "บังคับซิงก์ข้อมูลล่าสุดทันที"}</span>
                   </button>
                 </div>
               )}
