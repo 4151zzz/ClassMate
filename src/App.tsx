@@ -517,6 +517,8 @@ export function App() {
         isOpen={lightboxOpen}
         onClose={() => setLightboxOpen(false)}
         item={lightboxItem}
+        gallery={data.gallery}
+        onNavigate={setLightboxItem}
       />
     </div>
     </ThemeProvider>

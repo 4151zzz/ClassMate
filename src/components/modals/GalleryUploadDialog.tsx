@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Image as ImageIcon, Upload, Check, X, Layers, Sparkles } from "lucide-react";
+import { Image as ImageIcon, Upload, Check, X, Layers, Sparkles, Trash2, CheckCircle2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -38,6 +38,7 @@ export const GalleryUploadDialog: React.FC<GalleryUploadDialogProps> = ({
   const [selectedImages, setSelectedImages] = useState<{ url: string; name: string }[]>([]);
   const [isCompressing, setIsCompressing] = useState(false);
   const [compressProgress, setCompressProgress] = useState({ current: 0, total: 0 });
+  const [titleMode, setTitleMode] = useState<"same" | "numbered">("same");
 
   // Reset states on close
   const handleClose = () => {
@@ -45,6 +46,7 @@ export const GalleryUploadDialog: React.FC<GalleryUploadDialogProps> = ({
     setSingleUrl("");
     setSelectedImages([]);
     setIsCompressing(false);
+    setTitleMode("same");
     onClose();
   };
 
@@ -55,16 +57,14 @@ export const GalleryUploadDialog: React.FC<GalleryUploadDialogProps> = ({
     setIsCompressing(true);
     setCompressProgress({ current: 0, total: files.length });
 
-    // Show toast for feedback
     const toastId = toast.loading(
       files.length > 1
-        ? `กำลังประมวลผลและบีบอัดรูปภาพ ${files.length} รูป...`
-        : "กำลังประมวลผลและบีบอัดรูปภาพ..."
+        ? `กำลังประมวลผลและบีบอัดภาพ ${files.length} รูป...`
+        : "กำลังประมวลผลและบีบอัดภาพ..."
     );
 
     try {
       if (gdrive.isConfigured()) {
-        // If Google Drive configured, try upload
         const uploaded: { url: string; name: string }[] = [];
         for (let i = 0; i < files.length; i++) {
           try {
@@ -76,10 +76,11 @@ export const GalleryUploadDialog: React.FC<GalleryUploadDialogProps> = ({
           }
           setCompressProgress({ current: i + 1, total: files.length });
         }
-        setSelectedImages(uploaded);
+        // Append to existing selected images
+        setSelectedImages((prev) => [...prev, ...uploaded]);
         toast.success(`อัปโหลดรูปภาพ ${uploaded.length} รูปเรียบร้อย`, { id: toastId });
       } else {
-        // High-Speed Canvas Compression (Reduces 10MB phone photo -> ~70KB)
+        // High-Speed Client-Side Canvas Compression (~70KB per photo)
         const compressedUrls = await compressMultipleImages(
           files,
           { maxWidth: 1280, maxHeight: 1280, quality: 0.75 },
@@ -91,10 +92,11 @@ export const GalleryUploadDialog: React.FC<GalleryUploadDialogProps> = ({
           name: files[idx]?.name || `รูปที่ ${idx + 1}`,
         }));
 
-        setSelectedImages(items);
+        // Append to existing selected images so user can add more batches
+        setSelectedImages((prev) => [...prev, ...items]);
 
-        // Auto fill title if empty and single file
-        if (!title && files.length === 1) {
+        // Auto fill title if still empty
+        if (!title) {
           const rawName = files[0].name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ");
           setTitle(rawName || "กิจกรรมการจัดการเรียนรู้");
         }
@@ -110,11 +112,17 @@ export const GalleryUploadDialog: React.FC<GalleryUploadDialogProps> = ({
       toast.error("เกิดข้อผิดพลาดในการประมวลผลรูปภาพ", { id: toastId });
     } finally {
       setIsCompressing(false);
+      // Reset input value so same files can be re-selected if needed
+      e.target.value = "";
     }
   };
 
   const removeImage = (index: number) => {
     setSelectedImages((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const clearAllImages = () => {
+    setSelectedImages([]);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -125,10 +133,16 @@ export const GalleryUploadDialog: React.FC<GalleryUploadDialogProps> = ({
       const now = Date.now();
       const defaultBaseTitle = title.trim() || "กิจกรรมการจัดการเรียนรู้";
 
+      // Create a separate GalleryItem for EACH image!
       const newItems: GalleryItem[] = selectedImages.map((img, idx) => ({
         id: `gal-${now}-${idx}`,
         url: img.url,
-        title: selectedImages.length === 1 ? defaultBaseTitle : `${defaultBaseTitle} (${idx + 1})`,
+        // When titleMode === "same": exact same title for all photos
+        // When titleMode === "numbered": adds (1), (2), etc.
+        title:
+          titleMode === "same" || selectedImages.length === 1
+            ? defaultBaseTitle
+            : `${defaultBaseTitle} (${idx + 1})`,
         category,
         date,
       }));
@@ -139,7 +153,11 @@ export const GalleryUploadDialog: React.FC<GalleryUploadDialogProps> = ({
         newItems.forEach((item) => onSave(item));
       }
 
-      toast.success(`เพิ่มรูปภาพ ${newItems.length} รูปลงคลังภาพแล้ว`);
+      toast.success(
+        selectedImages.length > 1
+          ? `เพิ่มภาพ ${newItems.length} รูปลงคลังภาพเรียบร้อย (หัวข้อ: "${defaultBaseTitle}")`
+          : `เพิ่มรูปภาพลงคลังภาพเรียบร้อย`
+      );
       handleClose();
       return;
     }
@@ -153,7 +171,7 @@ export const GalleryUploadDialog: React.FC<GalleryUploadDialogProps> = ({
         category,
         date,
       });
-      toast.success("เพิ่มรูปภาพลงคลังภาพแล้ว");
+      toast.success("เพิ่มรูปภาพลงคลังภาพเรียบร้อย");
       handleClose();
       return;
     }
@@ -165,77 +183,156 @@ export const GalleryUploadDialog: React.FC<GalleryUploadDialogProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-md bg-[#0a0d14] border border-white/15 text-white shadow-2xl">
+      <DialogContent className="max-w-lg bg-[#0a0d14] border border-white/15 text-white shadow-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-base font-bold text-white">
             <ImageIcon className="w-5 h-5 text-cyan-400" />
-            เพิ่มรูปภาพกิจกรรม (รองรับเลือกหลายรูปพร้อมกัน)
+            เพิ่มรูปภาพกิจกรรม (อัปโหลดหลายรูปในหัวข้อเดียวกัน)
           </DialogTitle>
           <DialogDescription className="text-xs text-slate-400">
-            เลือกรูปภาพจากโทรศัพท์/คอมพิวเตอร์ได้ทีละหลายรูป ระบบจะบีบอัดภาพให้อัตโนมัติเพื่อให้ซิงก์คลาวด์ได้รวดเร็ว
+            เลือกรูปภาพพร้อมกันได้หลายรูป ระบบจะแยกเป็นรูปละ 1 รายการในคลังภาพให้อัตโนมัติในหัวข้อเดียวกัน
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-3.5 py-2 text-xs">
+          {/* Title / Topic Name */}
+          <div>
+            <label className="text-slate-300 mb-1.5 block font-semibold flex items-center justify-between">
+              <span>ชื่อหัวข้อกิจกรรม <span className="text-cyan-400">*</span></span>
+              {selectedImages.length > 1 && (
+                <span className="text-[11px] text-cyan-400 font-normal">
+                  (จะใช้ชื่อนี้กับทั้ง {selectedImages.length} รูปที่เลือก)
+                </span>
+              )}
+            </label>
+            <Input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="เช่น ตักบาตรข้าวสารอาหารแห้ง, การจัดการเรียนรู้แบบ Active Learning..."
+              className="bg-black/60 border-cyan-500/30 text-white placeholder:text-slate-500 focus:border-cyan-400"
+              required
+            />
+          </div>
+
+          {/* Title Naming Style Toggle (Only when multiple photos selected) */}
+          {selectedImages.length > 1 && (
+            <div className="p-2.5 rounded-xl bg-cyan-500/[0.07] border border-cyan-500/25 space-y-1.5">
+              <span className="text-[11px] font-semibold text-cyan-200 block">
+                รูปแบบชื่อภาพเมื่อแยกในคลังภาพ:
+              </span>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setTitleMode("same")}
+                  className={`p-2 rounded-lg text-left border text-xs transition-all flex items-start gap-2 ${
+                    titleMode === "same"
+                      ? "bg-cyan-500/20 border-cyan-400 text-white font-medium shadow-[0_0_10px_rgba(0,240,255,0.2)]"
+                      : "bg-black/40 border-white/10 text-slate-400 hover:text-white hover:bg-white/5"
+                  }`}
+                >
+                  <CheckCircle2 className={`w-3.5 h-3.5 shrink-0 mt-0.5 ${titleMode === "same" ? "text-cyan-400" : "text-slate-500"}`} />
+                  <div>
+                    <span className="font-semibold block">ชื่อหัวข้อเดียวกันทุกรูป</span>
+                    <span className="text-[10px] text-slate-400 block mt-0.5">
+                      {title.trim() || "ชื่อหัวข้อ"}
+                    </span>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setTitleMode("numbered")}
+                  className={`p-2 rounded-lg text-left border text-xs transition-all flex items-start gap-2 ${
+                    titleMode === "numbered"
+                      ? "bg-cyan-500/20 border-cyan-400 text-white font-medium shadow-[0_0_10px_rgba(0,240,255,0.2)]"
+                      : "bg-black/40 border-white/10 text-slate-400 hover:text-white hover:bg-white/5"
+                  }`}
+                >
+                  <CheckCircle2 className={`w-3.5 h-3.5 shrink-0 mt-0.5 ${titleMode === "numbered" ? "text-cyan-400" : "text-slate-500"}`} />
+                  <div>
+                    <span className="font-semibold block">ต่อท้ายด้วยหมายเลข</span>
+                    <span className="text-[10px] text-slate-400 block mt-0.5">
+                      {title.trim() || "ชื่อหัวข้อ"} (1), (2)...
+                    </span>
+                  </div>
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Upload Area */}
-          <div className="p-3 rounded-xl bg-white/[0.03] border border-white/10 space-y-2">
+          <div className="p-3 rounded-xl bg-white/[0.03] border border-white/10 space-y-2.5">
             {selectedImages.length > 0 ? (
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-slate-300 font-medium flex items-center gap-1.5">
+                  <span className="text-slate-200 font-medium flex items-center gap-1.5 text-xs">
                     <Layers className="w-3.5 h-3.5 text-cyan-400" />
                     รูปที่เลือก ({selectedImages.length} รูป)
                   </span>
-                  <label className="text-[11px] text-cyan-400 hover:text-cyan-300 cursor-pointer font-semibold inline-flex items-center gap-1">
-                    <Upload className="w-3 h-3" /> เพิ่มรูปอีก
-                    <input
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      onChange={handleImageFiles}
-                      className="hidden"
-                      disabled={isCompressing}
-                    />
-                  </label>
+                  <div className="flex items-center gap-2">
+                    <label className="text-[11px] text-cyan-400 hover:text-cyan-300 cursor-pointer font-semibold inline-flex items-center gap-1 bg-cyan-500/10 px-2 py-1 rounded-lg border border-cyan-500/30">
+                      <Upload className="w-3 h-3" /> เพิ่มรูปอีก
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={handleImageFiles}
+                        className="hidden"
+                        disabled={isCompressing}
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      onClick={clearAllImages}
+                      className="text-[11px] text-red-400 hover:text-red-300 p-1 rounded hover:bg-red-500/10 transition"
+                      title="ล้างรูปทั้งหมด"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
 
                 {/* Thumbnails Grid */}
-                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-48 overflow-y-auto p-1 bg-black/40 rounded-lg border border-white/5 no-scrollbar">
+                <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 max-h-48 overflow-y-auto p-1.5 bg-black/50 rounded-xl border border-white/10 no-scrollbar">
                   {selectedImages.map((img, idx) => (
                     <div
                       key={idx}
-                      className="relative aspect-square rounded-lg overflow-hidden border border-white/15 group"
+                      className="relative aspect-square rounded-lg overflow-hidden border border-white/15 group bg-slate-900"
                     >
                       <img
                         src={img.url}
                         alt={`Preview ${idx + 1}`}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                       />
                       <button
                         type="button"
                         onClick={() => removeImage(idx)}
-                        className="absolute top-1 right-1 p-1 rounded-full bg-black/70 hover:bg-red-500 text-white transition-colors"
+                        className="absolute top-1 right-1 p-1 rounded-full bg-black/80 hover:bg-red-500 text-white transition-colors"
                         title="ลบรูปนี้"
                       >
                         <X className="w-3 h-3" />
                       </button>
-                      <span className="absolute bottom-1 left-1 px-1 py-0.2 rounded bg-black/60 text-[9px] font-mono text-cyan-300">
+                      <span className="absolute bottom-1 left-1 px-1.5 py-0.2 rounded bg-black/70 text-[9px] font-mono text-cyan-300">
                         #{idx + 1}
                       </span>
                     </div>
                   ))}
                 </div>
+
+                <p className="text-[10px] text-emerald-400 flex items-center gap-1 font-mono">
+                  ✓ บีบอัดพร้อมบันทึกเป็น {selectedImages.length} รายการแยกในคลังภาพ
+                </p>
               </div>
             ) : (
-              <label className="flex flex-col items-center justify-center border-2 border-dashed border-cyan-500/30 hover:border-cyan-400 rounded-xl h-36 cursor-pointer transition text-center p-4 bg-cyan-500/[0.02] hover:bg-cyan-500/[0.06]">
-                <Upload className="w-8 h-8 text-cyan-400/80 mb-2" />
-                <span className="text-white font-medium text-xs">
+              <label className="flex flex-col items-center justify-center border-2 border-dashed border-cyan-500/40 hover:border-cyan-400 rounded-xl h-36 cursor-pointer transition text-center p-4 bg-cyan-500/[0.03] hover:bg-cyan-500/[0.08]">
+                <Upload className="w-8 h-8 text-cyan-400 mb-2" />
+                <span className="text-white font-semibold text-xs">
                   {isCompressing
                     ? `กำลังประมวลผล (${compressProgress.current}/${compressProgress.total})...`
                     : "กดเลือกรูปภาพจากเครื่อง (เลือกได้หลายรูปพร้อมกัน)"}
                 </span>
                 <span className="text-[10px] text-slate-400 mt-1">
-                  JPG, PNG, WebP • บีบอัดความเร็วสูงให้อัตโนมัติ
+                  เลือกทีละหลายรูปได้เลย • ระบบบีบอัดภาพให้อัตโนมัติ (~70KB/รูป)
                 </span>
                 <input
                   type="file"
@@ -252,26 +349,13 @@ export const GalleryUploadDialog: React.FC<GalleryUploadDialogProps> = ({
             {selectedImages.length === 0 && (
               <div className="pt-1">
                 <Input
-                  placeholder="หรือวางลิงก์รูปภาพ: https://..."
+                  placeholder="หรือวางลิงก์รูปภาพเดี่ยว: https://..."
                   value={singleUrl}
                   onChange={(e) => setSingleUrl(e.target.value)}
                   className="h-8 text-xs bg-black/60 border-white/10 text-white placeholder:text-slate-600"
                 />
               </div>
             )}
-          </div>
-
-          <div>
-            <label className="text-slate-300 mb-1 block font-medium">
-              ชื่อกิจกรรม / คำอธิบายภาพ
-            </label>
-            <Input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="เช่น กิจกรรมการจัดการเรียนรู้แบบ Active Learning, ตักบาตรข้าวสาร..."
-              className="bg-black/60 border-white/15 text-white placeholder:text-slate-600"
-              required
-            />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -299,13 +383,6 @@ export const GalleryUploadDialog: React.FC<GalleryUploadDialogProps> = ({
             </div>
           </div>
 
-          <div className="p-2.5 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-[11px] text-cyan-300 flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-cyan-400 shrink-0" />
-            <span>
-              รูปที่อัปโหลดจะถูกปรับขนาดให้เหมาะสมสำหรับแสดงผลบนเว็บและมือถือ เพื่อให้ซิงก์คลาวด์ได้เร็วไม่เกิน 1 วินาที
-            </span>
-          </div>
-
           <DialogFooter className="pt-2 flex-row justify-end gap-2">
             <Button
               type="button"
@@ -324,7 +401,7 @@ export const GalleryUploadDialog: React.FC<GalleryUploadDialogProps> = ({
               {isCompressing
                 ? "กำลังประมวลผล..."
                 : selectedImages.length > 1
-                ? `เพิ่มรูปภาพ (${selectedImages.length} รูป)`
+                ? `บันทึกและแยกเป็น ${selectedImages.length} ภาพในคลัง`
                 : "เพิ่มรูปภาพ"}
             </Button>
           </DialogFooter>

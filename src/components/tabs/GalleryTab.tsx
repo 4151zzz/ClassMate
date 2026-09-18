@@ -7,11 +7,13 @@ import {
   Maximize2,
   Calendar,
   Layers,
+  Search,
 } from "lucide-react";
 import { GalleryItem } from "@/types/practicum";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 
 interface GalleryTabProps {
   gallery: GalleryItem[];
@@ -37,11 +39,18 @@ export const GalleryTab: React.FC<GalleryTabProps> = ({
   onOpenLightbox,
 }) => {
   const [selectedCategory, setSelectedCategory] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
 
   const filteredItems = useMemo(() => {
-    if (selectedCategory === "all") return gallery;
-    return gallery.filter((item) => item.category === selectedCategory);
-  }, [gallery, selectedCategory]);
+    return gallery.filter((item) => {
+      const matchCat = selectedCategory === "all" || item.category === selectedCategory;
+      const matchSearch =
+        !searchQuery.trim() ||
+        (item.title && item.title.toLowerCase().includes(searchQuery.toLowerCase().trim())) ||
+        (item.date && item.date.toLowerCase().includes(searchQuery.toLowerCase().trim()));
+      return matchCat && matchSearch;
+    });
+  }, [gallery, selectedCategory, searchQuery]);
 
   return (
     <div className="space-y-6">
@@ -68,21 +77,37 @@ export const GalleryTab: React.FC<GalleryTabProps> = ({
         )}
       </div>
 
-      {/* Category filter pills */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-2 no-scrollbar">
-        {CATEGORIES.map((cat) => (
-          <button
-            key={cat.key}
-            onClick={() => setSelectedCategory(cat.key)}
-            className={`px-3 py-1.5 rounded-full text-xs transition whitespace-nowrap cursor-pointer ${
-              selectedCategory === cat.key
-                ? "bg-cyber-cyan/25 text-cyber-cyan border border-cyber-cyan/60 shadow-[0_0_12px_rgba(0,240,255,0.3)] font-semibold"
-                : "bg-white/5 text-slate-400 border border-white/10 hover:text-white hover:bg-white/10"
-            }`}
-          >
-            {cat.label}
-          </button>
-        ))}
+      {/* Filter and Search Bar */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+        {/* Category filter pills */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+          {CATEGORIES.map((cat) => (
+            <button
+              key={cat.key}
+              onClick={() => setSelectedCategory(cat.key)}
+              className={`px-3 py-1.5 rounded-full text-xs transition whitespace-nowrap cursor-pointer ${
+                selectedCategory === cat.key
+                  ? "bg-cyber-cyan/25 text-cyber-cyan border border-cyber-cyan/60 shadow-[0_0_12px_rgba(0,240,255,0.3)] font-semibold"
+                  : "bg-white/5 text-slate-400 border border-white/10 hover:text-white hover:bg-white/10"
+              }`}
+            >
+              {cat.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Search by Topic/Title */}
+        {gallery.length > 0 && (
+          <div className="relative min-w-[200px] sm:max-w-xs">
+            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="ค้นหาตามหัวข้อภาพ..."
+              className="pl-8 h-8 text-xs bg-black/40 border-white/10 text-white placeholder:text-slate-500 rounded-full"
+            />
+          </div>
+        )}
       </div>
 
       {/* Photos Grid */}
