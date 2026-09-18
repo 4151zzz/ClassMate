@@ -119,4 +119,5 @@ export interface PracticumData {
   teachingLogs: TeachingLog[];
   gallery: GalleryItem[];
   studentShowcases: StudentShowcase[];
+  showcases?: StudentShowcase[];
 }

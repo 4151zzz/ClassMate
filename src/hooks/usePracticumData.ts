@@ -525,12 +525,13 @@ export function usePracticumData(currentUser?: GoogleUser | null) {
   // Student Showcase
   const saveShowcase = useCallback((showcase: StudentShowcase) => {
     setData((prev) => {
-      const exists = prev.showcases.some((s) => s.id === showcase.id);
+      const currentList = prev.studentShowcases || [];
+      const exists = currentList.some((s) => s.id === showcase.id);
       return {
         ...prev,
-        showcases: exists
-          ? prev.showcases.map((s) => (s.id === showcase.id ? showcase : s))
-          : [showcase, ...prev.showcases],
+        studentShowcases: exists
+          ? currentList.map((s) => (s.id === showcase.id ? showcase : s))
+          : [showcase, ...currentList],
       };
     });
     toast.success("บันทึกผลงานนักเรียนแล้ว");
@@ -539,7 +540,7 @@ export function usePracticumData(currentUser?: GoogleUser | null) {
   const deleteShowcase = useCallback((id: string) => {
     setData((prev) => ({
       ...prev,
-      showcases: prev.showcases.filter((s) => s.id !== id),
+      studentShowcases: (prev.studentShowcases || []).filter((s) => s.id !== id),
     }));
     toast.info("ลบผลงานนักเรียนเรียบร้อย");
   }, []);
